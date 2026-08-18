@@ -1,0 +1,1341 @@
+{
+  "startup_path": "{{FIXTURE_PATH}}",
+  "open_repository": {
+    "head": {
+      "detached": false,
+      "name": "main",
+      "oid": "a9214624572004adc825f586b788cb2bfa7d1f19"
+    },
+    "isEmpty": false,
+    "name": "history",
+    "path": "{{FIXTURE_PATH}}",
+    "remotes": []
+  },
+  "commit_graph": {
+    "laneCount": 4,
+    "rows": [
+      {
+        "color": 0,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000900
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000900
+          },
+          "id": "a9214624572004adc825f586b788cb2bfa7d1f19",
+          "parents": [
+            "dc4832ba3135144811e7e98ba9d13e704daef22a"
+          ],
+          "refs": [
+            {
+              "isHead": true,
+              "kind": "localBranch",
+              "name": "main"
+            },
+            {
+              "isHead": false,
+              "kind": "remoteBranch",
+              "name": "origin/main"
+            }
+          ],
+          "shortId": "a921462",
+          "summary": "main tip"
+        },
+        "edges": [
+          {
+            "color": 0,
+            "fromLane": 0,
+            "toLane": 0,
+            "toRow": 3
+          }
+        ],
+        "lane": 0
+      },
+      {
+        "color": 1,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000840
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000840
+          },
+          "id": "eb7506a8d164ac0d5917a846a3d0c2f4b68f334f",
+          "parents": [
+            "d2ca0857b211b3d9e0e4bfb52d48ded371216978"
+          ],
+          "refs": [
+            {
+              "isHead": false,
+              "kind": "localBranch",
+              "name": "feature-b"
+            }
+          ],
+          "shortId": "eb7506a",
+          "summary": "feature-b tip"
+        },
+        "edges": [
+          {
+            "color": 1,
+            "fromLane": 1,
+            "toLane": 1,
+            "toRow": 5
+          }
+        ],
+        "lane": 1
+      },
+      {
+        "color": 2,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000780
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000780
+          },
+          "id": "6e103b425cda4acb36259501a7f19e9dd108e545",
+          "parents": [
+            "9f4f16ce824a33f5a595f714a07bb63761c6639f"
+          ],
+          "refs": [
+            {
+              "isHead": false,
+              "kind": "remoteBranch",
+              "name": "origin/feature-a"
+            }
+          ],
+          "shortId": "6e103b4",
+          "summary": "feature-a, one commit ahead of its local branch tip"
+        },
+        "edges": [
+          {
+            "color": 2,
+            "fromLane": 2,
+            "toLane": 2,
+            "toRow": 7
+          }
+        ],
+        "lane": 2
+      },
+      {
+        "color": 0,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000720
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000720
+          },
+          "id": "dc4832ba3135144811e7e98ba9d13e704daef22a",
+          "parents": [
+            "931d4a54e1ee511f4a67cd6f4de17b33b4c8ba16"
+          ],
+          "refs": [],
+          "shortId": "dc4832b",
+          "summary": "main continues after the merge"
+        },
+        "edges": [
+          {
+            "color": 0,
+            "fromLane": 0,
+            "toLane": 0,
+            "toRow": 4
+          }
+        ],
+        "lane": 0
+      },
+      {
+        "color": 0,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000660
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000660
+          },
+          "id": "931d4a54e1ee511f4a67cd6f4de17b33b4c8ba16",
+          "parents": [
+            "4e5f7419023e6437a1a67f9fd7b1290dc5a82501",
+            "8e857cbd2d7c249f7210f7aa84d992b437144b2d"
+          ],
+          "refs": [],
+          "shortId": "931d4a5",
+          "summary": "merge refactor/parser into main"
+        },
+        "edges": [
+          {
+            "color": 0,
+            "fromLane": 0,
+            "toLane": 0,
+            "toRow": 8
+          },
+          {
+            "color": 3,
+            "fromLane": 0,
+            "toLane": 3,
+            "toRow": 6
+          }
+        ],
+        "lane": 0
+      },
+      {
+        "color": 1,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000600
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000600
+          },
+          "id": "d2ca0857b211b3d9e0e4bfb52d48ded371216978",
+          "parents": [
+            "32f830c4a5511a00c2a5e3cc41d61248f267f051"
+          ],
+          "refs": [],
+          "shortId": "d2ca085",
+          "summary": "feature-b diverges from base"
+        },
+        "edges": [
+          {
+            "color": 1,
+            "fromLane": 1,
+            "toLane": 0,
+            "toRow": 12
+          }
+        ],
+        "lane": 1
+      },
+      {
+        "color": 3,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000540
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000540
+          },
+          "id": "8e857cbd2d7c249f7210f7aa84d992b437144b2d",
+          "parents": [
+            "bf0d539fdc079b4104272327790311b7553dd033"
+          ],
+          "refs": [
+            {
+              "isHead": false,
+              "kind": "localBranch",
+              "name": "refactor/parser"
+            }
+          ],
+          "shortId": "8e857cb",
+          "summary": "refactor/parser continues"
+        },
+        "edges": [
+          {
+            "color": 3,
+            "fromLane": 3,
+            "toLane": 3,
+            "toRow": 9
+          }
+        ],
+        "lane": 3
+      },
+      {
+        "color": 2,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000480
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000480
+          },
+          "id": "9f4f16ce824a33f5a595f714a07bb63761c6639f",
+          "parents": [
+            "b9d0d727e23fab9cba3e0f25b6016ca488ce9854"
+          ],
+          "refs": [
+            {
+              "isHead": false,
+              "kind": "localBranch",
+              "name": "feature-a"
+            }
+          ],
+          "shortId": "9f4f16c",
+          "summary": "feature-a continues"
+        },
+        "edges": [
+          {
+            "color": 2,
+            "fromLane": 2,
+            "toLane": 2,
+            "toRow": 10
+          }
+        ],
+        "lane": 2
+      },
+      {
+        "color": 0,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000420
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000420
+          },
+          "id": "4e5f7419023e6437a1a67f9fd7b1290dc5a82501",
+          "parents": [
+            "3be87f5c3d2b374f232deb35960564a5cb7b6a8c"
+          ],
+          "refs": [],
+          "shortId": "4e5f741",
+          "summary": "main continues under lane contention"
+        },
+        "edges": [
+          {
+            "color": 0,
+            "fromLane": 0,
+            "toLane": 0,
+            "toRow": 11
+          }
+        ],
+        "lane": 0
+      },
+      {
+        "color": 3,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000360
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000360
+          },
+          "id": "bf0d539fdc079b4104272327790311b7553dd033",
+          "parents": [
+            "3be87f5c3d2b374f232deb35960564a5cb7b6a8c"
+          ],
+          "refs": [],
+          "shortId": "bf0d539",
+          "summary": "refactor/parser diverges from main"
+        },
+        "edges": [
+          {
+            "color": 3,
+            "fromLane": 3,
+            "toLane": 0,
+            "toRow": 11
+          }
+        ],
+        "lane": 3
+      },
+      {
+        "color": 2,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000300
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000300
+          },
+          "id": "b9d0d727e23fab9cba3e0f25b6016ca488ce9854",
+          "parents": [
+            "32f830c4a5511a00c2a5e3cc41d61248f267f051"
+          ],
+          "refs": [],
+          "shortId": "b9d0d72",
+          "summary": "feature-a diverges from base"
+        },
+        "edges": [
+          {
+            "color": 2,
+            "fromLane": 2,
+            "toLane": 0,
+            "toRow": 12
+          }
+        ],
+        "lane": 2
+      },
+      {
+        "color": 0,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000240
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000240
+          },
+          "id": "3be87f5c3d2b374f232deb35960564a5cb7b6a8c",
+          "parents": [
+            "32f830c4a5511a00c2a5e3cc41d61248f267f051"
+          ],
+          "refs": [
+            {
+              "isHead": false,
+              "kind": "tag",
+              "name": "v0.1.0"
+            }
+          ],
+          "shortId": "3be87f5",
+          "summary": "main continues past the fan-out"
+        },
+        "edges": [
+          {
+            "color": 0,
+            "fromLane": 0,
+            "toLane": 0,
+            "toRow": 12
+          }
+        ],
+        "lane": 0
+      },
+      {
+        "color": 0,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000180
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000180
+          },
+          "id": "32f830c4a5511a00c2a5e3cc41d61248f267f051",
+          "parents": [
+            "12664d83f2c45a3255caded7894595693f7b6ffe"
+          ],
+          "refs": [],
+          "shortId": "32f830c",
+          "summary": "base commit for the branch fan-out"
+        },
+        "edges": [
+          {
+            "color": 0,
+            "fromLane": 0,
+            "toLane": 0,
+            "toRow": 13
+          }
+        ],
+        "lane": 0
+      },
+      {
+        "color": 0,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000120
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000120
+          },
+          "id": "12664d83f2c45a3255caded7894595693f7b6ffe",
+          "parents": [
+            "0a4ed91abcc1f495967477fd6192e477f68b21f5"
+          ],
+          "refs": [],
+          "shortId": "12664d8",
+          "summary": "third commit on the linear run"
+        },
+        "edges": [
+          {
+            "color": 0,
+            "fromLane": 0,
+            "toLane": 0,
+            "toRow": 14
+          }
+        ],
+        "lane": 0
+      },
+      {
+        "color": 0,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000060
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000060
+          },
+          "id": "0a4ed91abcc1f495967477fd6192e477f68b21f5",
+          "parents": [
+            "05ac0b6171bf93e5417b5c6f642f6fd685859c67"
+          ],
+          "refs": [],
+          "shortId": "0a4ed91",
+          "summary": "second commit on the linear run"
+        },
+        "edges": [
+          {
+            "color": 0,
+            "fromLane": 0,
+            "toLane": 0,
+            "toRow": 15
+          }
+        ],
+        "lane": 0
+      },
+      {
+        "color": 0,
+        "commit": {
+          "author": {
+            "email": "fixture-author@example.com",
+            "name": "Fixture Author",
+            "offsetMinutes": 0,
+            "timestamp": 1700000000
+          },
+          "body": "",
+          "committer": {
+            "email": "fixture-committer@example.com",
+            "name": "Fixture Committer",
+            "offsetMinutes": 0,
+            "timestamp": 1700000000
+          },
+          "id": "05ac0b6171bf93e5417b5c6f642f6fd685859c67",
+          "parents": [],
+          "refs": [],
+          "shortId": "05ac0b6",
+          "summary": "root commit"
+        },
+        "edges": [],
+        "lane": 0
+      }
+    ],
+    "truncated": false
+  },
+  "list_refs": [
+    {
+      "ahead": 0,
+      "behind": 0,
+      "fullName": "refs/heads/feature-a",
+      "isHead": false,
+      "kind": "localBranch",
+      "name": "feature-a",
+      "target": "9f4f16ce824a33f5a595f714a07bb63761c6639f",
+      "upstream": null
+    },
+    {
+      "ahead": 0,
+      "behind": 0,
+      "fullName": "refs/heads/feature-b",
+      "isHead": false,
+      "kind": "localBranch",
+      "name": "feature-b",
+      "target": "eb7506a8d164ac0d5917a846a3d0c2f4b68f334f",
+      "upstream": null
+    },
+    {
+      "ahead": 0,
+      "behind": 0,
+      "fullName": "refs/heads/main",
+      "isHead": true,
+      "kind": "localBranch",
+      "name": "main",
+      "target": "a9214624572004adc825f586b788cb2bfa7d1f19",
+      "upstream": null
+    },
+    {
+      "ahead": 0,
+      "behind": 0,
+      "fullName": "refs/heads/refactor/parser",
+      "isHead": false,
+      "kind": "localBranch",
+      "name": "refactor/parser",
+      "target": "8e857cbd2d7c249f7210f7aa84d992b437144b2d",
+      "upstream": null
+    },
+    {
+      "ahead": 0,
+      "behind": 0,
+      "fullName": "refs/remotes/origin/feature-a",
+      "isHead": false,
+      "kind": "remoteBranch",
+      "name": "origin/feature-a",
+      "target": "6e103b425cda4acb36259501a7f19e9dd108e545",
+      "upstream": null
+    },
+    {
+      "ahead": 0,
+      "behind": 0,
+      "fullName": "refs/remotes/origin/main",
+      "isHead": false,
+      "kind": "remoteBranch",
+      "name": "origin/main",
+      "target": "a9214624572004adc825f586b788cb2bfa7d1f19",
+      "upstream": null
+    },
+    {
+      "ahead": 0,
+      "behind": 0,
+      "fullName": "refs/tags/v0.1.0",
+      "isHead": false,
+      "kind": "tag",
+      "name": "v0.1.0",
+      "target": "3be87f5c3d2b374f232deb35960564a5cb7b6a8c",
+      "upstream": null
+    }
+  ],
+  "working_status": {
+    "conflicted": [],
+    "staged": [
+      {
+        "deletions": 0,
+        "insertions": 0,
+        "isBinary": false,
+        "oldPath": null,
+        "path": "staged-addition.txt",
+        "status": "added"
+      }
+    ],
+    "unstaged": [
+      {
+        "deletions": 0,
+        "insertions": 0,
+        "isBinary": false,
+        "oldPath": null,
+        "path": "fixture.json",
+        "status": "untracked"
+      },
+      {
+        "deletions": 0,
+        "insertions": 0,
+        "isBinary": false,
+        "oldPath": null,
+        "path": "README.md",
+        "status": "modified"
+      }
+    ]
+  },
+  "commit_detail": {
+    "05ac0b6171bf93e5417b5c6f642f6fd685859c67": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000000
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000000
+        },
+        "id": "05ac0b6171bf93e5417b5c6f642f6fd685859c67",
+        "parents": [],
+        "refs": [],
+        "shortId": "05ac0b6",
+        "summary": "root commit"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 3,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "README.md",
+          "status": "added"
+        }
+      ],
+      "insertions": 3
+    },
+    "0a4ed91abcc1f495967477fd6192e477f68b21f5": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000060
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000060
+        },
+        "id": "0a4ed91abcc1f495967477fd6192e477f68b21f5",
+        "parents": [
+          "05ac0b6171bf93e5417b5c6f642f6fd685859c67"
+        ],
+        "refs": [],
+        "shortId": "0a4ed91",
+        "summary": "second commit on the linear run"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/c2.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "12664d83f2c45a3255caded7894595693f7b6ffe": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000120
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000120
+        },
+        "id": "12664d83f2c45a3255caded7894595693f7b6ffe",
+        "parents": [
+          "0a4ed91abcc1f495967477fd6192e477f68b21f5"
+        ],
+        "refs": [],
+        "shortId": "12664d8",
+        "summary": "third commit on the linear run"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/c3.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "32f830c4a5511a00c2a5e3cc41d61248f267f051": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000180
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000180
+        },
+        "id": "32f830c4a5511a00c2a5e3cc41d61248f267f051",
+        "parents": [
+          "12664d83f2c45a3255caded7894595693f7b6ffe"
+        ],
+        "refs": [],
+        "shortId": "32f830c",
+        "summary": "base commit for the branch fan-out"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/base.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "3be87f5c3d2b374f232deb35960564a5cb7b6a8c": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000240
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000240
+        },
+        "id": "3be87f5c3d2b374f232deb35960564a5cb7b6a8c",
+        "parents": [
+          "32f830c4a5511a00c2a5e3cc41d61248f267f051"
+        ],
+        "refs": [
+          {
+            "isHead": false,
+            "kind": "tag",
+            "name": "v0.1.0"
+          }
+        ],
+        "shortId": "3be87f5",
+        "summary": "main continues past the fan-out"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/m1.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "4e5f7419023e6437a1a67f9fd7b1290dc5a82501": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000420
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000420
+        },
+        "id": "4e5f7419023e6437a1a67f9fd7b1290dc5a82501",
+        "parents": [
+          "3be87f5c3d2b374f232deb35960564a5cb7b6a8c"
+        ],
+        "refs": [],
+        "shortId": "4e5f741",
+        "summary": "main continues under lane contention"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/m2.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "6e103b425cda4acb36259501a7f19e9dd108e545": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000780
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000780
+        },
+        "id": "6e103b425cda4acb36259501a7f19e9dd108e545",
+        "parents": [
+          "9f4f16ce824a33f5a595f714a07bb63761c6639f"
+        ],
+        "refs": [
+          {
+            "isHead": false,
+            "kind": "remoteBranch",
+            "name": "origin/feature-a"
+          }
+        ],
+        "shortId": "6e103b4",
+        "summary": "feature-a, one commit ahead of its local branch tip"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/fa3.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "8e857cbd2d7c249f7210f7aa84d992b437144b2d": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000540
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000540
+        },
+        "id": "8e857cbd2d7c249f7210f7aa84d992b437144b2d",
+        "parents": [
+          "bf0d539fdc079b4104272327790311b7553dd033"
+        ],
+        "refs": [
+          {
+            "isHead": false,
+            "kind": "localBranch",
+            "name": "refactor/parser"
+          }
+        ],
+        "shortId": "8e857cb",
+        "summary": "refactor/parser continues"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/rp2.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "931d4a54e1ee511f4a67cd6f4de17b33b4c8ba16": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000660
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000660
+        },
+        "id": "931d4a54e1ee511f4a67cd6f4de17b33b4c8ba16",
+        "parents": [
+          "4e5f7419023e6437a1a67f9fd7b1290dc5a82501",
+          "8e857cbd2d7c249f7210f7aa84d992b437144b2d"
+        ],
+        "refs": [],
+        "shortId": "931d4a5",
+        "summary": "merge refactor/parser into main"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/merge1.txt",
+          "status": "added"
+        },
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/rp1.txt",
+          "status": "added"
+        },
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/rp2.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 3
+    },
+    "9f4f16ce824a33f5a595f714a07bb63761c6639f": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000480
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000480
+        },
+        "id": "9f4f16ce824a33f5a595f714a07bb63761c6639f",
+        "parents": [
+          "b9d0d727e23fab9cba3e0f25b6016ca488ce9854"
+        ],
+        "refs": [
+          {
+            "isHead": false,
+            "kind": "localBranch",
+            "name": "feature-a"
+          }
+        ],
+        "shortId": "9f4f16c",
+        "summary": "feature-a continues"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/fa2.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "a9214624572004adc825f586b788cb2bfa7d1f19": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000900
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000900
+        },
+        "id": "a9214624572004adc825f586b788cb2bfa7d1f19",
+        "parents": [
+          "dc4832ba3135144811e7e98ba9d13e704daef22a"
+        ],
+        "refs": [
+          {
+            "isHead": true,
+            "kind": "localBranch",
+            "name": "main"
+          },
+          {
+            "isHead": false,
+            "kind": "remoteBranch",
+            "name": "origin/main"
+          }
+        ],
+        "shortId": "a921462",
+        "summary": "main tip"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/m4.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "b9d0d727e23fab9cba3e0f25b6016ca488ce9854": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000300
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000300
+        },
+        "id": "b9d0d727e23fab9cba3e0f25b6016ca488ce9854",
+        "parents": [
+          "32f830c4a5511a00c2a5e3cc41d61248f267f051"
+        ],
+        "refs": [],
+        "shortId": "b9d0d72",
+        "summary": "feature-a diverges from base"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/fa1.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "bf0d539fdc079b4104272327790311b7553dd033": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000360
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000360
+        },
+        "id": "bf0d539fdc079b4104272327790311b7553dd033",
+        "parents": [
+          "3be87f5c3d2b374f232deb35960564a5cb7b6a8c"
+        ],
+        "refs": [],
+        "shortId": "bf0d539",
+        "summary": "refactor/parser diverges from main"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/rp1.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "d2ca0857b211b3d9e0e4bfb52d48ded371216978": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000600
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000600
+        },
+        "id": "d2ca0857b211b3d9e0e4bfb52d48ded371216978",
+        "parents": [
+          "32f830c4a5511a00c2a5e3cc41d61248f267f051"
+        ],
+        "refs": [],
+        "shortId": "d2ca085",
+        "summary": "feature-b diverges from base"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/fb1.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "dc4832ba3135144811e7e98ba9d13e704daef22a": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000720
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000720
+        },
+        "id": "dc4832ba3135144811e7e98ba9d13e704daef22a",
+        "parents": [
+          "931d4a54e1ee511f4a67cd6f4de17b33b4c8ba16"
+        ],
+        "refs": [],
+        "shortId": "dc4832b",
+        "summary": "main continues after the merge"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/m3.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    },
+    "eb7506a8d164ac0d5917a846a3d0c2f4b68f334f": {
+      "commit": {
+        "author": {
+          "email": "fixture-author@example.com",
+          "name": "Fixture Author",
+          "offsetMinutes": 0,
+          "timestamp": 1700000840
+        },
+        "body": "",
+        "committer": {
+          "email": "fixture-committer@example.com",
+          "name": "Fixture Committer",
+          "offsetMinutes": 0,
+          "timestamp": 1700000840
+        },
+        "id": "eb7506a8d164ac0d5917a846a3d0c2f4b68f334f",
+        "parents": [
+          "d2ca0857b211b3d9e0e4bfb52d48ded371216978"
+        ],
+        "refs": [
+          {
+            "isHead": false,
+            "kind": "localBranch",
+            "name": "feature-b"
+          }
+        ],
+        "shortId": "eb7506a",
+        "summary": "feature-b tip"
+      },
+      "deletions": 0,
+      "files": [
+        {
+          "deletions": 0,
+          "insertions": 1,
+          "isBinary": false,
+          "oldPath": null,
+          "path": "notes/fb2.txt",
+          "status": "added"
+        }
+      ],
+      "insertions": 1
+    }
+  },
+  "close_repository": null
+}

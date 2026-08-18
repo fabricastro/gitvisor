@@ -11,7 +11,9 @@
     "app": "tauri dev",
     "app:build": "tauri build",
     "e2e:native:smoke": "wdio run wdio.native.conf.ts --spec ./e2e/native/smoke.spec.ts",
-    "e2e:native:regressions": "wdio run wdio.native.conf.ts --spec ./e2e/native/regressions/graph-viewport.spec.ts"
+    "e2e:native:regressions": "wdio run wdio.native.conf.ts --spec ./e2e/native/regressions/graph-viewport.spec.ts",
+    "e2e:browser": "wdio run wdio.browser.conf.ts",
+    "e2e:mocks": "cargo run -p git-fixtures --bin build-fixture && cargo run -p git-fixtures --bin dump-mocks -- --repo target/e2e-fixtures/history --out e2e/mocks/history.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
