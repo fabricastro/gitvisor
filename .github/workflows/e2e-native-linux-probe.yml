@@ -1,0 +1,70 @@
+name: E2E Native (Linux probe)
+
+# design.md §8 (D9), tasks.md 6.4-6.5: WebKitGTK under the embedded provider
+# is documented but UNPROVEN on Linux. This workflow answers one narrow
+# question — can the embedded provider get a session and a screenshot under
+# xvfb? — and nothing depends on its result until a maintainer runs it and
+# records a passing run URL.
+#
+# workflow_dispatch-only, deliberately. It is NOT wired into ci.yml or any
+# push/PR/nightly trigger, and no other workflow in this repository claims
+# Linux native coverage. Per the decision rule in design.md §8: three probe
+# attempts on this path before falling back to the official tauri-driver, and
+# three more there before dropping Linux native coverage and recording why.
+# This workflow only implements the first rung of that ladder — promoting it
+# to a blocking trigger, or building the tauri-driver fallback, is future
+# work for whoever runs the probe, not something to pre-build speculatively.
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  native-e2e-linux-probe:
+    name: "Probe: embedded WebDriver provider under WebKitGTK + xvfb"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Tauri + WebKitGTK Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xvfb
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build the e2e-enabled debug binary
+        run: cargo build --manifest-path src-tauri/Cargo.toml --features e2e-webdriver
+
+      # Spec A only (design.md §8's probe scope) — this workflow answers "can
+      # the harness boot at all", not "is the harness correct on Linux".
+      - name: "Probe: Spec A — native smoke, under xvfb"
+        run: xvfb-run --auto-servernum pnpm e2e:native:smoke
+
+      - name: Upload probe artifacts (always — a failed probe's screenshot is the point)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-e2e-linux-probe-artifacts
+          path: target/e2e-artifacts
+          if-no-files-found: ignore

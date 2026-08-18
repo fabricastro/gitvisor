@@ -1,0 +1,61 @@
+name: E2E Native (macOS)
+
+# spec.md, requirement "CI Trigger Matrix": native WKWebView e2e runs nightly,
+# on workflow_dispatch, and on release tags — not on every push/PR (a real
+# WKWebView session is slow next to the browser-mode fast gate in ci.yml).
+#
+# Both specs are ordinary blocking tests. Spec B (graph-viewport regression,
+# F1) used to be wrapped by scripts/expect-red.sh while F1 was open; F1 is
+# fixed (fix-graph-viewport) and that wrapper is deleted. Reintroducing an
+# expected-failure guard here would be exactly the "amendment after
+# fix-graph-viewport" this change's tasks.md forbids.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  native-e2e:
+    name: Native WKWebView e2e (Spec A + Spec B)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Debug profile, `e2e-webdriver` feature — the only build the embedded
+      # WebDriver server exists in (compile_error! makes a release build with
+      # this feature unbuildable; design.md §1.1).
+      - name: Build the e2e-enabled debug binary
+        run: cargo build --manifest-path src-tauri/Cargo.toml --features e2e-webdriver
+
+      - name: "Spec A — native smoke (must be green)"
+        run: pnpm e2e:native:smoke
+
+      - name: "Spec B — graph-viewport regression"
+        run: pnpm e2e:native:regressions
+
+      - name: Upload native e2e artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-e2e-artifacts
+          path: target/e2e-artifacts
+          if-no-files-found: ignore

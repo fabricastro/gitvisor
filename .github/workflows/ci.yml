@@ -1,0 +1,186 @@
+name: CI
+
+# The fast gate (spec.md, requirement "CI Trigger Matrix"): everything here
+# is blocking on every push and pull request. No `continue-on-error`
+# anywhere in this file.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate-config:
+    name: Validate workflow / config YAML and JSON
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # actionlint understands the GitHub Actions workflow schema, not just
+      # YAML syntax — catches things a plain parse would miss (bad `needs:`
+      # references, unknown contexts, shellcheck issues in `run:` blocks).
+      - name: actionlint (.github/workflows/**)
+        uses: reviewdog/action-actionlint@v1
+        with:
+          reporter: github-pr-check
+          fail_level: error
+
+      # Plain parse for everything else this project ships as YAML/JSON.
+      # openspec/config.yaml shipped invalid YAML earlier in this project's
+      # history and nobody caught it reading the file (task 6.2). This is
+      # the check that would have.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PyYAML
+        run: pip install --quiet pyyaml
+
+      - name: Parse every workflow/config YAML and JSON file
+        run: python3 scripts/validate-config.py
+
+  # G1 (design.md §1.3) — deliberately its own job, not a step tacked onto
+  # `rust` below. `cargo tree` is metadata-only (no compilation, no
+  # webkit2gtk headers needed), so this is the fastest signal in the whole
+  # workflow and shouldn't wait behind a full `cargo test --workspace`.
+  release-safety-graph:
+    name: "G1 — release build graph excludes the WebDriver plugin"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      # Both directions: the positive assertion is what makes the negative
+      # one mean anything — a grep that silently stopped matching looks
+      # identical to a grep that legitimately found nothing.
+      - name: Release graph excludes the plugin
+        run: |
+          set -euo pipefail
+          if cargo tree -p gitvisor -e normal --release | grep -q wdio; then
+            echo "::error::tauri-plugin-wdio-webdriver is in the RELEASE dependency graph"
+            exit 1
+          fi
+          echo "G1: release graph — absent (expected)"
+
+      - name: "e2e-webdriver feature graph includes the plugin (positive control)"
+        run: |
+          set -euo pipefail
+          if ! cargo tree -p gitvisor -e normal --features e2e-webdriver | grep -q wdio; then
+            echo "::error::tauri-plugin-wdio-webdriver is missing from the e2e-webdriver graph — the positive control failed, the check above cannot be trusted"
+            exit 1
+          fi
+          echo "G1: e2e-webdriver graph — present (expected, proves the check can still fail)"
+
+  rust:
+    name: cargo test / clippy / fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # tauri-runtime-wry needs webkit2gtk headers to *compile* on Linux,
+      # regardless of whether the resulting binary is ever run headless here.
+      - name: Install Tauri Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo fmt --all --check
+        run: cargo fmt --all --check
+
+      - name: cargo clippy --workspace --all-targets
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test --workspace
+        run: cargo test --workspace
+
+  frontend:
+    name: pnpm build (typecheck + bundle)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+  browser-e2e:
+    name: Browser-mode e2e (committed mocks, no Rust, no webkit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: pnpm e2e:browser
+        run: pnpm e2e:browser
+
+      - name: Upload browser-mode artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-e2e-artifacts
+          path: target/e2e-artifacts
+          if-no-files-found: ignore
+
+  mocks-drift:
+    name: Regenerate browser-mode mocks and diff against committed copies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Rebuild the deterministic fixture
+        run: cargo run -p git-fixtures --bin build-fixture
+
+      - name: Regenerate e2e/mocks/history.json
+        run: |
+          cargo run -p git-fixtures --bin dump-mocks -- \
+            --repo target/e2e-fixtures/history --out e2e/mocks/history.json
+
+      # Requirement "Browser-Mode Mocks Are Generated and Diff-Checked":
+      # a model type change with no regenerated mock must fail here, loudly,
+      # as a diff — never a silent pass.
+      - name: git diff --exit-code e2e/mocks
+        run: |
+          if ! git diff --exit-code -- e2e/mocks; then
+            echo "::error::e2e/mocks/*.json is stale — regenerate with 'pnpm run e2e:mocks' and commit the result"
+            exit 1
+          fi
