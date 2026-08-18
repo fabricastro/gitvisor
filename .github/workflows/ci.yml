@@ -66,7 +66,7 @@ jobs:
       - name: Release graph excludes the plugin
         run: |
           set -euo pipefail
-          if cargo tree -p gitvisor -e normal --release | grep -q wdio; then
+          if cargo tree -p gitvisor -e normal | grep -q wdio; then
             echo "::error::tauri-plugin-wdio-webdriver is in the RELEASE dependency graph"
             exit 1
           fi

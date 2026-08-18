@@ -64,7 +64,7 @@ jobs:
         run: cargo build --manifest-path src-tauri/Cargo.toml --features e2e-webdriver
 
       - name: Record the release build graph (provenance)
-        run: cargo tree -p gitvisor -e normal --release > release-build-graph.txt
+        run: cargo tree -p gitvisor -e normal > release-build-graph.txt
 
       # G3 — provenance. Hashed here, before upload; the scan job re-hashes
       # after download and diffs against this, so "the artifact scanned" and
