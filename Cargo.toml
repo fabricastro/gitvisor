@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["crates/git-core", "src-tauri", "tools/git-fixtures"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/fabricastro/gitvisor"
+
+[workspace.dependencies]
+git2 = { version = "0.20", default-features = false, features = ["vendored-libgit2"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"

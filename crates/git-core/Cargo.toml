@@ -1,0 +1,11 @@
+[package]
+name = "git-core"
+description = "Pure domain core: reads a git repository and computes the commit graph layout."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+git2.workspace = true
+serde.workspace = true
+thiserror.workspace = true
