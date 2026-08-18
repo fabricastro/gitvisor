@@ -1,0 +1,111 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  gitvisor: open-source visual git client (GitKraken Desktop alternative),
+  macOS/Windows/Linux. Cargo workspace: crates/git-core (pure domain, git2,
+  commit graph layout) + src-tauri (Tauri v2 shell, 7 commands, no logic).
+  Frontend: React 19 + TS + Vite 7 + Tailwind v4 + zustand, pnpm, feature-organised
+  under src/. Rust 1.97.1 via rustup (~/.cargo/bin, not on default PATH).
+
+product_scope:
+  # Decided by the user on 2026-08-18, after being shown the tradeoff explicitly.
+  # This is a product boundary, not a technical one. Every proposal MUST be
+  # checked against it before scoping work.
+  decision: "viewer + safe writes"
+  rationale: >
+    Covers the 80% of daily git use without the 80% of the risk. A defect in
+    anything on the in_scope list shows wrong pixels or refuses an action; a
+    defect in rebase, force-push or conflict resolution destroys a user's work.
+    The project owner is new to Rust, and credential handling plus visual
+    conflict resolution is where most open-source git GUIs stall.
+  in_scope:
+    - "Read: history graph, branches, merges, diffs, blame, branch comparison, search"
+    - "Write: stage, unstage, commit"
+    - "Branch: create, checkout"
+    - "Remote: fetch, pull, push"
+  out_of_scope:
+    # Explicitly deferred. Not "never" — but never without a new product decision.
+    - rebase (interactive or otherwise)
+    - cherry-pick
+    - force-push
+    - visual merge-conflict resolution
+    - reset --hard and other history-destroying operations
+  out_of_scope_ux: >
+    When the user needs a deferred operation, the app SHOULD say so plainly and
+    point at the terminal, rather than hiding the capability or pretending the
+    repository state does not require it.
+
+strict_tdd: false
+
+testing:
+  strict_tdd_mode: disabled
+  detected: "2026-08-18"
+  backend:
+    test_runner:
+      command: "cargo test -p git-core"
+      framework: "cargo test (built-in), 5 unit tests on graph layout algorithm"
+    layers:
+      unit: { available: true, tool: "cargo test -p git-core" }
+      integration: { available: false, tool: null }
+      e2e: { available: false, tool: null }
+    coverage: { available: false, command: null }
+    quality:
+      linter: { available: true, command: "cargo clippy --workspace --all-targets" }
+      type_checker: { available: false, command: null, note: "N/A for Rust (compiler-checked)" }
+      formatter: { available: true, command: "cargo fmt --all --check" }
+  frontend:
+    test_runner:
+      command: null
+      framework: "none installed — no vitest, jest, or Playwright present in package.json"
+    layers:
+      unit: { available: false, tool: "—" }
+      integration: { available: false, tool: "—" }
+      e2e: { available: false, tool: "—" }
+    coverage: { available: false, command: null }
+    quality:
+      linter: { available: false, command: null, note: "no eslint config detected in repo root" }
+      type_checker: { available: true, command: "tsc --noEmit (via `pnpm build`)" }
+      formatter: { available: false, command: null, note: "no prettier config detected in repo root" }
+  gap: >
+    No JavaScript/TypeScript test runner is installed. Frontend verification today
+    is limited to `tsc --noEmit` + `vite build` (via `pnpm build`). Strict TDD
+    cannot be enforced on the frontend as-is: there is no runner to drive a
+    RED-GREEN-REFACTOR loop. Backend (git-core) has a real test runner (cargo test)
+    and could support strict TDD if desired; frontend cannot until a runner is
+    installed. This gap is recorded, not fixed — no packages were installed by init.
+  reference_commands:
+    - "cargo test -p git-core"
+    - "cargo clippy --workspace --all-targets"
+    - "cargo fmt --all --check"
+    - "pnpm build"
+    - "cargo run -p git-core --example dump -- <repo>"
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - "Preserve the git-core / src-tauri boundary: domain logic (libgit2, graph
+      layout) stays in git-core; src-tauri only exposes thin commands"
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+    - Frontend tasks MUST NOT claim "write failing test first" as a literal step
+      until a JS/TS test runner is installed; note manual verification instead
+  apply:
+    guidelines:
+      - Follow existing code patterns
+      - Keep git-core UI-agnostic; no Tauri/React imports inside crates/git-core
+    tdd: false # backend has a runner (cargo test); frontend has none — cannot claim strict TDD project-wide
+    test_command: "cargo test -p git-core"
+  verify:
+    test_command: "cargo test -p git-core"
+    build_command: "cargo clippy --workspace --all-targets && cargo fmt --all --check && pnpm build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
