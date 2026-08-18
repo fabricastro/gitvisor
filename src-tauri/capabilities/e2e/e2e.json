@@ -1,0 +1,12 @@
+{
+  "$schema": "../../gen/schemas/desktop-schema.json",
+  "identifier": "e2e",
+  "description": "Harness-only permissions.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:window:default",
+    "wdio-webdriver:default"
+  ]
+}

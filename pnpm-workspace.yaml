@@ -1,0 +1,7 @@
+# esbuild ships a prebuilt binary that its postinstall script has to link.
+allowBuilds:
+  esbuild: true
+  # Pulled in transitively by @wdio/cli. Unused here: the Tauri service drives the
+  # app through its embedded WebDriver server, not through a browser driver.
+  edgedriver: false
+  geckodriver: false
