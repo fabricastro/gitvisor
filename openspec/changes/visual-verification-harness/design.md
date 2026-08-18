@@ -212,12 +212,25 @@ Three independent gates, each answering a different question:
 **G1 — build graph.** Seconds, no GUI dependencies:
 
 ```
-cargo tree -p gitvisor -e normal --release            → MUST NOT contain tauri-plugin-wdio-webdriver
-cargo tree -p gitvisor -e normal --features e2e-webdriver → MUST contain it
+cargo tree -p gitvisor -e normal                          → MUST NOT contain tauri-plugin-wdio-webdriver
+cargo tree -p gitvisor -e normal --features e2e-webdriver  → MUST contain it
 ```
 
 Both directions in one script. The positive assertion is what makes the negative one mean anything: a `grep`
 that has silently stopped matching looks identical to a `grep` that legitimately found nothing.
+
+**Correction (Phase 6 apply, 2026-08-18): `cargo tree` has no `--release`/profile flag at all** — `cargo
+tree --help` on cargo 1.97.1 confirms it (dependency *graphs* aren't profile-specific in Cargo's model; only
+compilation settings are). The line above originally read `cargo tree -p gitvisor -e normal --release`, which
+**errors** (`unexpected argument '--release' found`) rather than running. Piped into `grep -q wdio` under
+`set -o pipefail`, that error produces an empty pipe, `grep` finds nothing, and the check reports "absent" for
+the wrong reason — exactly the "a grep that has silently stopped matching looks identical to a grep that
+legitimately found nothing" failure mode this section warns about one paragraph up. The default (no
+`--features`) graph already **is** the release graph, since `e2e-webdriver` is off by default — no flag is
+needed. Caught by actually running the ci.yml invocation locally before trusting it, not by re-reading the
+prose. `.github/workflows/ci.yml` and `.github/workflows/release.yml` use the corrected form; this line is
+fixed to match, and the "Orchestrator verification" section below already used the correct form (`cargo tree
+-e normal`, no `--release`) — only this G1 code sample in the decision-summary section had the mistake.
 
 **G2 — artifact scan.** What it inspects, precisely:
 
@@ -254,8 +267,8 @@ the probe *and re-prove the positive control*, never to add an exclusion and mov
 
 **G3 — provenance and wiring.** The artifact scanned must be the artifact published:
 
-- The build job uploads the `.app`/bundle **and** `cargo tree -e normal --release` output as artifacts, plus a
-  `sha256` of every scanned Mach-O.
+- The build job uploads the `.app`/bundle **and** `cargo tree -e normal` output as artifacts, plus a
+  `sha256` of every scanned Mach-O. (No `--release` flag — see the correction above; `cargo tree` has none.)
 - The scan job downloads that artifact — it does not rebuild — and re-hashes before scanning.
 - The publish/upload-to-release job declares `needs: [scan]`. GitHub Actions skips a job whose `needs`
   dependency failed, so a failed scan **cannot** be followed by a publish. `continue-on-error` MUST NOT appear
