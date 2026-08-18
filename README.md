@@ -109,6 +109,12 @@ cargo test --workspace       # domain, graph layout, fixture determinism
 pnpm build                   # typecheck and bundle
 pnpm e2e:native:smoke        # drives the real app in real WKWebView
 pnpm e2e:native:regressions
+pnpm e2e:browser             # the same frontend, in Chrome, against generated mocks
+
+# Rebuild the deterministic fixture and regenerate e2e/mocks/*.json from it.
+# Run this after changing anything under crates/git-core/src/model.rs — CI
+# fails the build if the committed mocks drift from what this produces.
+pnpm run e2e:mocks
 
 # Print the computed graph as ASCII for any repository — the fastest way to
 # check a layout change. Run it beside `git log --graph --oneline --all`.
@@ -120,6 +126,17 @@ webview** through WebDriver, so what it verifies is what users get. The embedded
 WebDriver server is compiled out of every non-`e2e` build by a Cargo feature, a
 `build.rs` capability gate and a `compile_error!` guard — enabling it in a
 release build fails to compile rather than shipping a remote-control surface.
+Release builds are additionally checked by `scripts/release-scan.sh`, which
+scans the shipped bundle for any trace of the plugin and asserts both that it's
+absent from the release artifact and present in a deliberately e2e-enabled
+one — so a check that quietly stopped matching can't pass by accident.
+
+Browser mode (`pnpm e2e:browser`) drives the same frontend in Chrome against
+`invoke()` mocks generated straight from the fixture through the same
+`git-core` types the app itself uses — never hand-authored, and diff-checked
+in CI. It needs no Rust build and no WebKit, so it's the fast iteration loop;
+the native suite above is the correctness authority, since browser mode can't
+see real WebKit rendering, real IPC or the capability system.
 
 Fixtures pin author identity, timestamps, branch names and tree content, and
 assert commit OIDs against hardcoded constants, so the same history renders
