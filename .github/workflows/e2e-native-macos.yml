@@ -43,6 +43,12 @@ jobs:
       # Debug profile, `e2e-webdriver` feature — the only build the embedded
       # WebDriver server exists in (compile_error! makes a release build with
       # this feature unbuildable; design.md §1.1).
+      - name: Build the frontend so Tauri embeds it
+        # Without dist/ present at compile time the binary falls back to
+        # tauri.conf.json's devUrl and the webview tries to reach a Vite server
+        # that does not exist in CI — the app renders "Connection refused".
+        run: pnpm build
+
       - name: Build the e2e-enabled debug binary
         run: cargo build --manifest-path src-tauri/Cargo.toml --features e2e-webdriver
 
