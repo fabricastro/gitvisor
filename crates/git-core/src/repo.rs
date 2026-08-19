@@ -250,7 +250,9 @@ impl GitRepo {
                 .diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), Some(&mut options))?;
         diff.find_similar(None)?;
 
-        let files = collect_file_changes(&diff)?;
+        let mut files = collect_file_changes(&diff)?;
+        // Same platform-dependent ordering applies to diff deltas.
+        files.sort_by(|a, b| a.path.cmp(&b.path));
         let insertions = files.iter().map(|f| f.insertions).sum();
         let deletions = files.iter().map(|f| f.deletions).sum();
 
@@ -303,6 +305,14 @@ impl GitRepo {
                 unstaged.push(simple_change(path, status));
             }
         }
+
+        // libgit2 orders status entries using the repository's `core.ignorecase`,
+        // which follows the filesystem: case-insensitive on macOS, byte-wise on
+        // Linux. Sort explicitly so the same repository reports the same order
+        // on every platform.
+        staged.sort_by(|a, b| a.path.cmp(&b.path));
+        unstaged.sort_by(|a, b| a.path.cmp(&b.path));
+        conflicted.sort();
 
         Ok(WorkingStatus {
             staged,
