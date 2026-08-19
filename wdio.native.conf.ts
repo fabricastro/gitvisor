@@ -3,6 +3,8 @@ import { rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { readFileSync } from "node:fs";
+
 import type { Options } from "@wdio/types";
 
 import { readFixture } from "./e2e/support/fixture";
@@ -25,6 +27,27 @@ function clearRememberedRepoStorage(): void {
   if (process.platform !== "darwin") return;
   const dataDir = join(homedir(), "Library", "WebKit", "gitvisor", "WebsiteData");
   rmSync(dataDir, { recursive: true, force: true });
+}
+
+/**
+ * A debug Tauri build embeds `devUrl` from tauri.conf.json and loads the
+ * frontend over HTTP. That silently passes on any machine that happens to have
+ * `pnpm dev` running and fails everywhere else with a 15-second element
+ * timeout that says nothing about the cause — which is exactly how this went
+ * unnoticed locally while CI failed.
+ *
+ * `pnpm run e2e:build` strips `devUrl` so the bundle is embedded. This checks
+ * the binary actually got built that way and says so plainly if not.
+ */
+function assertFrontendIsEmbedded(binary: string): void {
+  const contents = readFileSync(binary);
+  if (contents.includes("localhost:1420")) {
+    throw new Error(
+      `${binary} still points at the Vite dev server.\n` +
+        "Build it with `pnpm run e2e:build` — a plain `cargo build` embeds devUrl " +
+        "and the app will only work while a dev server happens to be running.",
+    );
+  }
 }
 
 export const config: Options.Testrunner = {
@@ -51,6 +74,7 @@ export const config: Options.Testrunner = {
   services: [["@wdio/tauri-service", {}]],
 
   onPrepare: (_config, capabilities) => {
+    assertFrontendIsEmbedded(APPLICATION);
     clearRememberedRepoStorage();
 
     execSync("cargo run -p git-fixtures --bin build-fixture", {

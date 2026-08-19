@@ -109,6 +109,7 @@ selectable; the lines behind it are one canvas that repaints on scroll.
 ```bash
 cargo test --workspace       # domain, graph layout, fixture determinism
 pnpm build                   # typecheck and bundle
+pnpm run e2e:build           # build the e2e binary with the frontend embedded
 pnpm e2e:native:smoke        # drives the real app in real WKWebView
 pnpm e2e:native:regressions
 pnpm e2e:browser             # the same frontend, in Chrome, against generated mocks

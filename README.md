@@ -113,6 +113,7 @@ repinta al hacer scroll.
 ```bash
 cargo test --workspace       # dominio, layout del grafo, determinismo del fixture
 pnpm build                   # typecheck y bundle
+pnpm run e2e:build           # compila el binario de e2e con el frontend embebido
 pnpm e2e:native:smoke        # ejecuta la app real en WKWebView real
 pnpm e2e:native:regressions
 pnpm e2e:browser             # el mismo frontend, en Chrome, contra mocks generados

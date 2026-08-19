@@ -53,14 +53,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build the frontend so Tauri embeds it
-        # Without dist/ present at compile time the binary falls back to
-        # tauri.conf.json's devUrl and the webview tries to reach a Vite server
-        # that does not exist in CI — the app renders "Connection refused".
-        run: pnpm build
-
-      - name: Build the e2e-enabled debug binary
-        run: cargo build --manifest-path src-tauri/Cargo.toml --features e2e-webdriver
+      - name: Build the e2e binary with the frontend embedded
+        # A plain `cargo build` keeps tauri.conf.json's devUrl, so the webview
+        # loads over HTTP from a Vite server. That silently works on a machine
+        # that happens to be running `pnpm dev` and fails everywhere else with
+        # "Could not connect to localhost". `e2e:build` strips devUrl.
+        run: pnpm run e2e:build
 
       # Spec A only (design.md §8's probe scope) — this workflow answers "can
       # the harness boot at all", not "is the harness correct on Linux".
