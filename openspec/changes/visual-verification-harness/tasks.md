@@ -126,3 +126,28 @@ F1 is fixed and Spec B is green. Consequences for the deferred phases:
   to the native job. It existed only for the window while F1 was open.
 - New finding H2 (see `findings.md`): fixture determinism covers commit OIDs but
   **not** rendered relative dates. Phase 6 must not add assertions on date text.
+
+
+## Linux probe resolved (2026-08-18)
+
+Task 6.5 is **done**. The `workflow_dispatch` probe was run three times against
+the real repository and the results changed the answer twice:
+
+1. **Failed** — no artifact. The screenshot was captured at the end of the spec,
+   so a failure before that line produced nothing to upload. Fixed by moving
+   capture into an `afterTest` hook, verified by a deliberately failing spec.
+2. **Failed** — the screenshot showed `Could not connect to localhost:
+   Connection refused`. A debug Tauri build keeps `devUrl`, so the webview loads
+   over HTTP. Local runs had passed only because a Vite dev server left running
+   from an earlier session happened to be listening on port 1420. Fixed with
+   `pnpm run e2e:build` (strips `devUrl` via `TAURI_CONFIG`) plus an `onPrepare`
+   guard that refuses to start when the binary still carries the dev URL.
+3. **Passed** — `Running: WebKitGTK (v605.1.15) on linux`, Spec A green.
+
+**Linux native coverage is proven, not assumed.** The job is promoted from
+`workflow_dispatch`-only to `push`/`pull_request` on `main`, which is the
+trigger `design.md` §8 specified for the case where the probe succeeded. The
+fallback ladder (official `tauri-driver`, then dropping Linux) is not needed.
+
+Both defects found here were invisible to every local run and to every other CI
+job. They were only ever going to surface on a machine that was not this one.

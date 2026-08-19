@@ -28,7 +28,7 @@ Hoy Gitvisor **lee** repositorios. Todavía no escribe en ellos.
 | ✅ Funciona | Grafo de commits, ramas, remotos, tags, detalle de commit, estado del directorio de trabajo |
 | 🚧 Todavía no | Stage, commit, crear rama, checkout, fetch, pull, push |
 | ❌ No planeado | Rebase, cherry-pick, force-push, resolución visual de conflictos — [por qué](#alcance-qué-hace-y-qué-no-hace-gitvisor) |
-| 🧪 Verificado en | macOS. Windows y Linux están soportados por el stack, pero todavía nadie los ejecutó |
+| 🧪 Verificado en | macOS y Linux, con la suite end-to-end corriendo en ambos. Windows está soportado por el stack pero todavía nadie lo ejecutó |
 
 No lo apuntes a un repositorio que no puedas permitirte perder. No porque escriba
 —no lo hace—, sino porque es joven.
@@ -170,7 +170,7 @@ deliberadamente dentro del repositorio en lugar de en las notas privadas de algu
 
 Las contribuciones son bienvenidas, especialmente:
 
-- **Verificación en Windows y Linux** — el stack los soporta; todavía nadie los ejecutó ahí.
+- **Verificación en Windows** — el stack lo soporta; todavía nadie lo ejecutó ahí. macOS y Linux ya corren en CI.
 - **Operaciones de escritura** — la lista de alcance de más arriba está libre.
 - **Casos borde del layout del grafo** — merges octopus, historias muy anchas, clones shallow.
 

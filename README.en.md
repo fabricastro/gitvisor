@@ -28,7 +28,7 @@ Gitvisor **reads** repositories today. It does not write to them yet.
 | ✅ Works | Commit graph, branches, remotes, tags, commit detail, working-directory status |
 | 🚧 Not yet | Stage, commit, branch, checkout, fetch, pull, push |
 | ❌ Not planned | Rebase, cherry-pick, force-push, visual conflict resolution — [see why](#scope-what-gitvisor-will-and-will-not-do) |
-| 🧪 Verified on | macOS. Windows and Linux are supported by the stack but not yet exercised |
+| 🧪 Verified on | macOS and Linux, with the end-to-end suite running on both. Windows is supported by the stack but not yet exercised |
 
 Do not point it at a repository you cannot afford to lose — not because it writes
 (it does not), but because it is young.
@@ -161,7 +161,7 @@ notes.
 
 Contributions are welcome, especially:
 
-- **Windows and Linux verification** — the stack supports both; nobody has run it there yet.
+- **Windows verification** — the stack supports it; nobody has run it there yet. macOS and Linux already run in CI.
 - **Write operations** — the in-scope list above is unclaimed.
 - **Graph layout edge cases** — octopus merges, very wide histories, shallow clones.
 

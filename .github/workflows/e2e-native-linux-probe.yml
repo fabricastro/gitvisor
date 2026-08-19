@@ -15,6 +15,12 @@ name: E2E Native (Linux probe)
 # to a blocking trigger, or building the tauri-driver fallback, is future
 # work for whoever runs the probe, not something to pre-build speculatively.
 on:
+  # Promoted from workflow_dispatch-only on 2026-08-18: the probe passed on
+  # ubuntu-latest (WebKitGTK 605.1.15, Spec A green), so Linux native coverage
+  # is proven rather than assumed.
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 env:
