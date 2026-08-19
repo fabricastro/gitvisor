@@ -11,6 +11,8 @@
   <img alt="Built with Tauri" src="https://img.shields.io/badge/built%20with-Tauri%20v2-24C8DB.svg">
 </p>
 
+<p align="center"><a href="README.md">Español</a> · <b>English</b></p>
+
 ![Gitvisor showing a repository with four branches, two merges and a tag](docs/screenshot.png)
 
 <sub>The screenshot shows the deterministic test fixture, so the same history renders identically on every machine.</sub>
