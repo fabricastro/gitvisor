@@ -1,5 +1,40 @@
 # Tasks: Stage and Commit
 
+## Delivery decision (orchestrator, 2026-08-20) — RESOLVED: split into two changes
+
+`ask-on-risk` fired on a ~3,000–3,400 line forecast. The user chose to **split
+the change in two** rather than chain 8–9 units inside one.
+
+| | Scope | Size | Ships |
+|---|---|---|---|
+| **This run** — `stage-unstage` | `with_fresh_index` (M2), structured errors, stage / unstage / bulk, the changed-files UI, fixtures, harness delta | ~1,200 | A usable feature: mark files from the app, commit in the terminal |
+| **Follow-up** — `commit` | `git` resolution, the subprocess, the timeout ladder, hooks, signing, identity via `git var` (M5), HEAD-delta reporting | ~2,000 | The rest |
+
+**Why here.** The risk is not spread evenly across this change. Everything that
+can modify a repository in a way the user did not ask for — a subprocess, a
+timeout that might kill a half-written commit, hook and signing behaviour,
+identity precedence — is in the second half. Staging is libgit2 in-process with
+one file written, and `with_fresh_index` makes "refuse before mutating"
+structural.
+
+Splitting lets the lower-risk half land, be used, and settle before the higher-risk
+half is written against it. It also keeps the commit subprocess out of a PR that
+would otherwise have already spent its review budget on UI.
+
+**The planning artifacts are NOT split.** `proposal.md`, `design.md` and
+`specs/` cover both halves and stay as they are — the commit half is fully
+designed and its evidence (M1, M3, M4, M5) is already measured. Only *delivery*
+is split. The follow-up change references these documents rather than
+re-deriving them; re-planning designed work would be the waste this split is
+trying to avoid.
+
+**Spikes.** Only **U3** (clippy path resolution for a foreign inherent method,
+with a source-scan fallback) gates this run — it decides how `with_fresh_index`
+is enforced. **U7** (long synchronous Tauri command freezing the webview) and
+**U10** (`git var` refusal parity) are commit-path concerns and defer with it.
+
+---
+
 ## Review Workload Forecast
 
 | Field | Value |
