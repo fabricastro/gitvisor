@@ -167,3 +167,31 @@ pub struct WorkingStatus {
     pub unstaged: Vec<FileChange>,
     pub conflicted: Vec<String>,
 }
+
+/// Why a requested path was skipped rather than staged or unstaged, instead
+/// of failing the whole batch (design.md §7.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SkipReason {
+    /// Present in neither the working tree, the index, nor `HEAD` — already
+    /// committed elsewhere, or an untracked file that was deleted.
+    Vanished,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkippedPath {
+    pub path: String,
+    pub reason: SkipReason,
+}
+
+/// The result of any write (`stage`, `unstage`). `status` is the existing
+/// sorted listing, recomputed after the write; `skipped` names paths the
+/// caller asked for that no longer existed anywhere (D9: sorted at
+/// construction, same as every other list this crate returns).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WriteOutcome {
+    pub status: WorkingStatus,
+    pub skipped: Vec<SkippedPath>,
+}

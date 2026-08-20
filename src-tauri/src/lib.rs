@@ -27,6 +27,8 @@ pub fn run() {
             commands::commit_graph,
             commands::commit_detail,
             commands::working_status,
+            commands::stage_paths,
+            commands::unstage_paths,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the application");

@@ -2,7 +2,7 @@
 //!
 //! Each one is a thin translation layer. All logic lives in `git-core`.
 
-use git_core::model::{CommitDetail, Graph, RefEntry, RepoInfo, WorkingStatus};
+use git_core::model::{CommitDetail, Graph, RefEntry, RepoInfo, WorkingStatus, WriteOutcome};
 use git_core::Result;
 use tauri::State;
 
@@ -56,4 +56,22 @@ pub fn commit_detail(
 #[tauri::command]
 pub fn working_status(path: String, repos: State<'_, RepoRegistry>) -> Result<WorkingStatus> {
     repos.with(&path, |repo| repo.status())
+}
+
+#[tauri::command]
+pub fn stage_paths(
+    path: String,
+    paths: Vec<String>,
+    repos: State<'_, RepoRegistry>,
+) -> Result<WriteOutcome> {
+    repos.with(&path, |repo| repo.stage(&paths))
+}
+
+#[tauri::command]
+pub fn unstage_paths(
+    path: String,
+    paths: Vec<String>,
+    repos: State<'_, RepoRegistry>,
+) -> Result<WriteOutcome> {
+    repos.with(&path, |repo| repo.unstage(&paths))
 }

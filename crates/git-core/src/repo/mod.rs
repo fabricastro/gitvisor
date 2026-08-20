@@ -9,14 +9,18 @@ mod index_guard;
 use std::collections::HashMap;
 use std::path::Path;
 
-use git2::{BranchType, Delta, DiffOptions, Repository, Sort, StatusOptions};
+use git2::{
+    BranchType, Delta, DiffOptions, Index, IndexEntry, IndexTime, Repository, Sort, StatusOptions,
+    TreeEntry,
+};
 
 use crate::error::{CoreError, Result};
 use crate::graph;
 use crate::model::{
     ChangeStatus, Commit, CommitDetail, FileChange, Graph, HeadInfo, RefBadge, RefEntry, RefKind,
-    RepoInfo, Signature, WorkingStatus,
+    RepoInfo, Signature, SkipReason, SkippedPath, WorkingStatus, WriteOutcome,
 };
+use crate::paths::normalise_repo_path;
 
 /// Commits read in one go when the caller does not ask for a specific limit.
 pub const DEFAULT_COMMIT_LIMIT: usize = 5_000;
@@ -321,6 +325,156 @@ impl GitRepo {
             unstaged,
             conflicted,
         })
+    }
+
+    /// Stage exactly the given paths — never a glob, never `add_all`
+    /// (spec.md: "Bulk Stage and Unstage Operate Only on Listed Entries").
+    /// `N = 1` is a normal call; there is no separate bulk path.
+    pub fn stage(&self, paths: &[String]) -> Result<WriteOutcome> {
+        self.preflight_write()?;
+
+        let mut normalised = Vec::with_capacity(paths.len());
+        for path in paths {
+            normalised.push(normalise_repo_path(path)?);
+        }
+
+        let workdir = self
+            .inner
+            .workdir()
+            .ok_or(CoreError::BareRepository)?
+            .to_path_buf();
+
+        let mut skipped = self.with_fresh_index(|repo, index| {
+            let mut skipped = Vec::new();
+            for path in &normalised {
+                if workdir.join(path).exists() {
+                    // File present on disk: stage it, added or modified alike.
+                    index.add_path(Path::new(path))?;
+                } else if path_tracked(repo, index, path)? {
+                    // Gone from disk but present in the index or HEAD: this
+                    // *is* staging a deletion, exactly what `git add
+                    // <deleted>` does.
+                    index.remove_path(Path::new(path))?;
+                } else {
+                    // In neither disk, index, nor HEAD: already gone.
+                    skipped.push(SkippedPath {
+                        path: path.clone(),
+                        reason: SkipReason::Vanished,
+                    });
+                }
+            }
+            Ok(skipped)
+        })?;
+
+        self.reload_index()?;
+        let status = self.status()?;
+        skipped.sort_by(|a, b| a.path.cmp(&b.path));
+        Ok(WriteOutcome { status, skipped })
+    }
+
+    /// Unstage exactly the given paths via manual index-entry restoration
+    /// (design.md §8). No `reset_default`, no `checkout_*`, no pathspec — the
+    /// file on disk is never read, written, or deleted.
+    pub fn unstage(&self, paths: &[String]) -> Result<WriteOutcome> {
+        self.preflight_write()?;
+
+        let mut normalised = Vec::with_capacity(paths.len());
+        for path in paths {
+            normalised.push(normalise_repo_path(path)?);
+        }
+
+        let mut skipped = self.with_fresh_index(|repo, index| {
+            let head_tree = head_commit(repo)?.map(|c| c.tree()).transpose()?;
+            let mut skipped = Vec::new();
+
+            for path in &normalised {
+                let head_entry = head_tree
+                    .as_ref()
+                    .and_then(|tree| tree.get_path(Path::new(path)).ok());
+
+                match head_entry {
+                    // HEAD exists and the path is in the HEAD tree: rebuild
+                    // the entry from the tree (stat fields zeroed, matching
+                    // what `git reset` itself writes) and restore it.
+                    Some(tree_entry) => {
+                        index.add(&restored_entry(path, &tree_entry))?;
+                    }
+                    // HEAD is unborn, or the path is absent from the HEAD
+                    // tree: the file becomes untracked again.
+                    None => {
+                        if index.get_path(Path::new(path), 0).is_some() {
+                            index.remove_path(Path::new(path))?;
+                        } else {
+                            skipped.push(SkippedPath {
+                                path: path.clone(),
+                                reason: SkipReason::Vanished,
+                            });
+                        }
+                    }
+                }
+            }
+            Ok(skipped)
+        })?;
+
+        self.reload_index()?;
+        let status = self.status()?;
+        skipped.sort_by(|a, b| a.path.cmp(&b.path));
+        Ok(WriteOutcome { status, skipped })
+    }
+
+    /// Shared by `stage`, `unstage`, and (later) `commit`: every refusal
+    /// fires before any mutation (spec.md: "Commit and Staging Refusals Use
+    /// Distinct, Machine-Readable Codes").
+    fn preflight_write(&self) -> Result<()> {
+        if self.inner.is_bare() {
+            return Err(CoreError::BareRepository);
+        }
+        let conflicted = self.status()?.conflicted;
+        if !conflicted.is_empty() {
+            return Err(CoreError::ConflictsPresent { paths: conflicted });
+        }
+        Ok(())
+    }
+}
+
+/// Whether `path` still has a presence in the index or in the `HEAD` tree —
+/// used by `stage` to tell "stage a deletion" apart from "already vanished".
+fn path_tracked(repo: &Repository, index: &Index, path: &str) -> Result<bool> {
+    if index.get_path(Path::new(path), 0).is_some() {
+        return Ok(true);
+    }
+    match head_commit(repo)?.map(|c| c.tree()).transpose()? {
+        Some(tree) => Ok(tree.get_path(Path::new(path)).is_ok()),
+        None => Ok(false),
+    }
+}
+
+/// `HEAD`'s commit, or `None` on an unborn branch — never an error, since an
+/// unborn `HEAD` is a normal, expected repository state here.
+fn head_commit(repo: &Repository) -> Result<Option<git2::Commit<'_>>> {
+    match repo.head() {
+        Ok(reference) => Ok(reference.peel_to_commit().ok()),
+        Err(_) => Ok(None),
+    }
+}
+
+/// Rebuild an `IndexEntry` from a `HEAD` tree entry, stat fields zeroed —
+/// exactly what `git reset <path>` itself writes when restoring an entry
+/// from a tree instead of from a working-tree stat.
+fn restored_entry(path: &str, tree_entry: &TreeEntry<'_>) -> IndexEntry {
+    IndexEntry {
+        ctime: IndexTime::new(0, 0),
+        mtime: IndexTime::new(0, 0),
+        dev: 0,
+        ino: 0,
+        mode: tree_entry.filemode() as u32,
+        uid: 0,
+        gid: 0,
+        file_size: 0,
+        id: tree_entry.id(),
+        flags: 0,
+        flags_extended: 0,
+        path: path.as_bytes().to_vec(),
     }
 }
 
