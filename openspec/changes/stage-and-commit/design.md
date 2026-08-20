@@ -25,6 +25,7 @@ contributor. Four times in this design the cheaper move was to stop needing the 
 | What `git2::ErrorCode` does a locked index produce? (`explore.md` §3.8) | Check for `.git/index.lock` **ourselves** before mutating. The libgit2 code is never consulted (§5.4) |
 | Does libgit2 honour `:(literal)` pathspec magic? | Unstage uses no pathspec API at all — index entries are restored one literal path at a time (§8) |
 | Does `@wdio/tauri-service` re-spawn the app per spec file? | Write specs get their **own wdio config**, the same shape as the existing native/browser split. Zero unknowns (§9.3) |
+| What is git's exact author-identity precedence? (`explore.md` §3.3 answered this confidently and **wrongly** — M5) | Never re-derive it. Ask the same `git` binary that will perform the commit, via `git var GIT_AUTHOR_IDENT` (§5.1) |
 
 Where a dependency genuinely cannot be removed — the pinentry hang — it was measured (M3), and §3 states
 precisely which part of M3 the design leans on and which part it refuses to generalise.
@@ -49,6 +50,7 @@ Read this table first. Everything below is the mechanism and the evidence.
 | **A10** | Stage all / unstage all | Same command, `paths: &[String]`. One `with_fresh_index` per batch ⇒ one atomic index write. Vanished paths are **skipped and reported**, not a batch failure | Decided, §7 |
 | **A11** | Unstage mechanism | Manual index-entry restoration from the HEAD tree. **No** `reset_default`, no `checkout_*`, no pathspec. Enforced by the same clippy gate | Decided, §8 |
 | **A12** | Fixtures | `build-fixture --name` selects a **recipe**, not just a directory. Exactly **two** fixtures (`history`, `writes`) — D8 collapsed the native surface to one spec | Decided, §9 — corrects `explore.md` §3.7 |
+| **A13** | Author identity | `git var GIT_AUTHOR_IDENT`, same binary / env / cwd as the commit. `Repository::signature()` is **denied by lint**. No prospective author is displayed anywhere | **M5-measured** — libgit2 and `git` disagree in *both* directions. Corrects `explore.md` §3.3, which marked the opposite claim "Verified", §5.1 |
 
 ---
 
@@ -192,6 +194,9 @@ disallowed-methods = [
   { path = "git2::Index::add_all",    reason = "stage the listed paths, never a glob" },
   { path = "git2::Index::remove_all", reason = "unstage the listed paths, never a glob" },
   { path = "git2::Index::update_all", reason = "stage the listed paths, never a glob" },
+  # Author identity (M5 / design.md §5.1). libgit2 reads config only; `git`
+  # honours GIT_AUTHOR_*. The two were MEASURED disagreeing in both directions.
+  { path = "git2::Repository::signature", reason = "identity comes from `git var GIT_AUTHOR_IDENT`, not libgit2 (M5)" },
 ]
 ```
 
@@ -326,7 +331,13 @@ Then three edits:
 | **set** | `GIT_EDITOR=:` and `GIT_SEQUENCE_EDITOR=:` | `--file=-` already means no editor is opened; this makes "an editor can never appear" true regardless of future argv changes or a `prepare-commit-msg` hook's behaviour |
 | **remove** | `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_NAMESPACE` | If Gitvisor was launched from a shell where any of these were exported — from inside a hook, from `git rebase --exec`, from a script that forgot to unset — the subprocess would commit **into a different repository or a different index than the one on screen**. That is a work-destruction path, and it costs one `env_remove` chain to close |
 
-**Not touched:** `GIT_ASKPASS` / `SSH_ASKPASS` (a commit needs no network credential; a user's graphical
+**Not touched, and specifically must not be:** `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` /
+`GIT_COMMITTER_NAME` / `GIT_COMMITTER_EMAIL` / `GIT_AUTHOR_DATE` / `GIT_COMMITTER_DATE`. **M5 measured that
+these are the identity source `git` actually uses, and that libgit2 cannot see them** (§5.1). They are
+inherited untouched, and the same builder passes the identical environment to the `git var` pre-flight, so
+the check and the commit cannot answer different questions.
+
+Also not touched: `GIT_ASKPASS` / `SSH_ASKPASS` (a commit needs no network credential; a user's graphical
 askpass is theirs), and `LANG` / `LC_ALL`. The locale is deliberately left alone because **nothing in this
 design parses git's text output** — see §2.5. The harness pins `LANG` for tests; the product does not need
 to, and pinning it would make a hook's own output arrive in a language the user did not choose.
@@ -420,10 +431,13 @@ sequenceDiagram
     Cmd->>Repo: with(&path, |r| r.commit(req))
 
     rect rgb(245,245,245)
-    Note over Repo: pre-flight — every one refuses BEFORE anything is spawned
-    Repo->>Repo: bare? conflicts? nothing staged? identity? .git/index.lock?
+    Note over Repo: pre-flight — every one refuses BEFORE the index lock is taken
+    Repo->>Repo: bare? conflicts? nothing staged? .git/index.lock?
     Repo->>GB: resolve(override → env → PATH)
     GB-->>Repo: /usr/bin/git   (or GitUnavailable)
+    Repo->>GB: identity: `git var GIT_AUTHOR_IDENT`, same env + cwd (M5, §5.1)
+    GB->>Git: spawn (~10 ms)
+    Git-->>GB: exit 0 + ident   (or IdentityMissing)
     end
 
     Repo->>Fresh: open + read HEAD
@@ -666,11 +680,57 @@ pub enum CoreError {
 No `SigningRequired` and no `HooksPresent`. M1 plus D1 make both git's job; M3 confirmed a failing signer
 already refuses cleanly with a better message than we could write.
 
-**`IdentityMissing` has a precision requirement.** `Repository::signature()` reads config only, whereas
-`git commit` also honours `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_*`. A pre-flight that only
-consults libgit2 would **falsely refuse** a user whose identity comes from the environment. The check
-therefore passes if *either* `signature()` succeeds *or* the environment we are about to pass supplies a
-name and an email. A false refusal is a defect, not a safe default.
+#### `IdentityMissing` is sourced from `git`, never from libgit2 — **M5**
+
+This was measured, not reasoned. `Repository::signature()` and `git commit` **disagree, in both
+directions**:
+
+```
+Isolated HOME, no user.name/user.email at any config level, identity only in GIT_AUTHOR_*:
+  PRE-FLIGHT via libgit2  -> Err: config value 'user.name' was not found — WOULD REFUSE
+  ACTUAL `git commit`     -> exit=0
+  COMMIT AUTHOR           -> Env Author <env@example.com>
+
+Env identity AND a global config both present:
+  Repository::signature()      -> the CONFIG identity
+  git var GIT_AUTHOR_IDENT     -> the ENV identity
+```
+
+**libgit2 reads git config only; `git` honours the environment.** That produces two distinct defects, and
+the second is the quieter one:
+
+| Defect | Shape |
+|---|---|
+| **False refusal** | A user whose identity comes only from `GIT_AUTHOR_*` is refused a commit that `git` performs correctly. A refusal that is wrong is a defect, not a safe default |
+| **Silent disagreement** | Both sources present, both succeed, and they name **different people**. Nothing refuses. Any prospective author derived from `signature()` is simply wrong about who is about to commit |
+
+**Decision: the identity pre-flight runs `git var GIT_AUTHOR_IDENT` — the same binary, the same environment,
+and the same working directory the commit will use.** Not "check libgit2 and also check the env vars": that
+would be re-deriving git's identity precedence in Gitvisor, which is the same trap D1 rejected for hooks —
+more code for a worse guarantee, and it is exactly the re-derivation `explore.md` §3.3 got wrong. Cost: one
+~10 ms spawn beside a subprocess that already takes hundreds of milliseconds, and the refusal lands before
+the index lock is taken and before any hook runs.
+
+The `git var` invocation and the `git commit` invocation are built by **one shared command builder**
+(`git_binary::base_command()`), so their environment and cwd cannot drift apart. A pre-flight that answers
+a different question than the commit asks is worth nothing.
+
+**Consequence for the UI: no prospective author is displayed.** The commit box shows a message field and a
+button, not "committing as …". If a future change wants that line, it must come from `git var
+GIT_AUTHOR_IDENT` — never from `signature()`, which the clippy denylist (§1.3) now refuses to compile,
+citing M5 at the point where someone would otherwise reach for it.
+
+**The pre-flight refuses early; it never guarantees success.** If `git var` succeeds and `git commit` still
+rejects the identity, that surfaces as `CommitFailed` with git's own message — correct, just less specific.
+This asymmetry is deliberate and is what makes U10 below a non-blocking question.
+
+> **U10 — unverified.** Whether `git var GIT_AUTHOR_IDENT` refuses in *exactly* the cases `git commit`
+> refuses. Git can auto-detect a name and email from the system; whether `git var` applies the same strict
+> check that makes `git commit` say *"unable to auto-detect email address"* has not been run here.
+> **Cheap check (5 min):** isolated `HOME`, no config, no env identity — run `git var GIT_AUTHOR_IDENT` and
+> `git commit` and compare exit codes; then repeat with a gecos name available but no email. If `git var`
+> turns out to be *stricter*, it would reintroduce a false refusal and the pre-flight must be relaxed to
+> reporting-only, letting `git commit`'s own refusal be the sole authority.
 
 ### 5.2 The wire shape, and why the existing seven commands are unaffected
 
@@ -976,6 +1036,12 @@ the wrong repository.
 | moves HEAD, then `sleep 5` | timeout fires but HEAD **moved** → `CommitOutcome { warning: TimedOutButHeadMoved }` — **the duplicate-commit bug, proven absent** |
 | `exit 128` with a stderr line | `CommitFailed`, stderr verbatim (M3 row 1's shape) |
 | absent file | `GitUnavailable` |
+| `var GIT_AUTHOR_IDENT` → exit 128 | `IdentityMissing`, refused **before** the commit is spawned |
+
+**M5 gets its own replay**, and it must use a real subprocess and a real isolated `HOME`: no `user.name` or
+`user.email` at any config level, identity supplied only through `GIT_AUTHOR_*`, asserting that
+`GitRepo::commit` **succeeds**. An in-process assertion against `Repository::signature()` would reproduce
+the bug rather than catch it.
 
 Injecting the binary path is not a testing convenience bolted on afterwards; it is the design decision that
 makes the worst path (§3.2) provable rather than argued.
@@ -995,7 +1061,7 @@ layout, container/presentational:
 |---|---|
 | `WorkingDirectoryPanel.tsx` | Container. Reads `status`, `gitProbe`, `staging` from the store; owns no markup decisions |
 | `ChangeList.tsx` / `ChangeRow.tsx` | Presentational. Props in, callbacks out. Rendered for both staged and unstaged |
-| `CommitBox.tsx` | Presentational. Message textarea, commit button, `Committing…` state, refusal block |
+| `CommitBox.tsx` | Presentational. Message textarea, commit button, `Committing…` state, refusal block. **No "committing as …" line** — M5 makes any author we could compute untrustworthy unless it comes from `git var` (§5.1) |
 | `RefusalNotice.tsx` | Presentational. Switches on `code`; renders hook/signer stderr in a quoted, attributed block |
 
 Store additions (`src/features/repo/store.ts`), all additive:
@@ -1064,6 +1130,10 @@ Nothing below is claimed as settled. Each has a stated cost of finding out.
 | U7 | Does a long synchronous Tauri command freeze the webview? | **Unverified** | §12, 2 min | Mildly — a freeze means one `spawn_blocking` line |
 | U8 | Windows: anything | **Unverified — no Windows machine has ever run this project.** `which` handles `PATHEXT`; hooks are delegated to git (moot per D1); `Child::kill()` is the only kill available, so §3.3's measured SIGTERM behaviour does not transfer | Needs a machine | This change **does not claim Windows support** |
 | U9 | Does a hang *after* the commit object exists behave like M3's? | **Unverified** — M3 measured one hang point, before any object is written | Hard to stage deliberately | **No.** §3.2 reports observed HEAD, never an assumption |
+| U10 | Does `git var GIT_AUTHOR_IDENT` refuse in exactly the cases `git commit` refuses? | **Unverified** | §5.1, 5 min | Mildly — if `git var` is stricter, the pre-flight relaxes to reporting-only. The asymmetry in §5.1 (refuse early, never guarantee) is what keeps this non-blocking |
+
+**Resolved since the first draft:** the author-identity question, which this document originally argued from
+the libgit2 API surface, is now **M5** — measured, in both directions. §5.1 states it as measured.
 
 ---
 
@@ -1077,6 +1147,18 @@ Nothing below is claimed as settled. Each has a stated cost of finding out.
 | 4 | "minimal commit-result type; reuse `WorkingStatus`" | Adds `WriteOutcome { status, skipped }` | Batch staging needs an honest answer for a path that vanished mid-flight (§7.2) |
 | 5 | `git-core` dependency-light by habit | Adds `which`, and `libc` on Unix | `which` for Windows `PATH` correctness we cannot test (§4.3); `libc` to send the **SIGTERM that M3 actually measured** rather than the SIGKILL `std` offers (§3.3) |
 | 6 | D1 listed `GIT_TERMINAL_PROMPT=0` and a timeout together as the hang mitigation | Keeps the env var, but names the timeout as the *only* hang guard | M3 measured that the env var has no effect on a blocking signer |
+| 7 | `explore.md` §3.3 stated — and marked **"Verified"** — that `Repository::signature()` follows git's precedence including `GIT_AUTHOR_*`, and concluded the empty-identity failure "cannot actually happen" | Identity comes from `git var GIT_AUTHOR_IDENT`; `Repository::signature()` is denied by lint | **M5 measured the opposite, in both directions.** The exploration's claim was never run. §5.1 |
+
+### A note on the label, not just the fact
+
+`explore.md` §3.3 carried the word **"Verified"** on a claim that had never been executed. That is worse
+than the same claim labelled unverified: a false *"unverified"* costs a reader five minutes, whereas a false
+*"Verified"* stops anyone from ever spending them, and the error compounds into every document downstream
+that trusts it — this design included, until M5.
+
+The practice this implies is narrow and cheap: **"Verified" means someone ran it and can show the output.**
+Reasoning from an API surface, however sound, is "reasoned". This design's §13 register exists to keep those
+two words apart, and the entry above is the first correction it has had to absorb.
 
 ---
 

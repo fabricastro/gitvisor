@@ -126,3 +126,42 @@ unrelated reason (`sub/` does not exist), not for containing `..`. A `..` that
 stays inside the repository is harmless and normalises fine. Reject paths that
 *escape*, not paths that merely contain `..` — a naive substring check would
 refuse legitimate input.
+
+## M5 — a `signature()` pre-flight falsely refuses env-var identities
+
+Measured 2026-08-20, in an isolated `HOME` with no `user.name` / `user.email`
+in any config level, and identity supplied only through `GIT_AUTHOR_*` /
+`GIT_COMMITTER_*`:
+
+```
+PRE-FLIGHT via libgit2  -> Err: config value 'user.name' was not found — WOULD REFUSE
+ACTUAL `git commit`     -> exit=0
+COMMIT AUTHOR           -> Env Author <env@example.com>
+```
+
+A second run against an unmodified environment showed the same split from the
+other direction: with `GIT_AUTHOR_NAME=Env Author` set *and* a global config
+present, `Repository::signature()` returned the **config** identity while
+`git var GIT_AUTHOR_IDENT` returned the **env** identity.
+
+**libgit2 reads git config only. `git` honours the environment.** An
+`IdentityMissing` pre-flight built on `Repository::signature()` would refuse
+commits that the actual commit path performs correctly — and would report a
+different author than the one the commit ends up carrying.
+
+This confirms `design.md`'s catch. The pre-flight must not be the sole source of
+truth for identity; either delegate the check to the same `git` that performs
+the commit, or accept a `signature()` failure as inconclusive rather than as a
+refusal.
+
+### The label was the real defect
+
+`explore.md` §3.3 states this the other way round and marks it **"Verified"** —
+"following the standard precedence: `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL` env
+vars, then `user.name`/`user.email` in local → global → system config". That is
+wrong, and it was never measured.
+
+A false "unverified" costs someone five minutes. A false **"Verified"** stops
+anyone from spending them. It is the one label that must never be applied to
+reasoning, however sound the reasoning feels — and this project has now been
+caught doing it once.
