@@ -10,6 +10,7 @@ import type {
   RefEntry,
   RepoInfo,
   WorkingStatus,
+  WriteOutcome,
 } from "@/shared/types";
 
 /** Repository passed on the command line, if any. */
@@ -39,4 +40,12 @@ export function commitDetail(path: string, id: string): Promise<CommitDetail> {
 
 export function workingStatus(path: string): Promise<WorkingStatus> {
   return invoke("working_status", { path });
+}
+
+export function stagePaths(path: string, paths: string[]): Promise<WriteOutcome> {
+  return invoke("stage_paths", { path, paths });
+}
+
+export function unstagePaths(path: string, paths: string[]): Promise<WriteOutcome> {
+  return invoke("unstage_paths", { path, paths });
 }

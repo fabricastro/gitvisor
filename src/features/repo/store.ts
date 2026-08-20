@@ -12,6 +12,11 @@ import * as api from "./api";
 /** Remembers the last repository so a restart lands straight back in it. */
 const LAST_REPO_KEY = "gitvisor:last-repo";
 
+interface StagingState {
+  busy: boolean;
+  error: CoreErrorWire | null;
+}
+
 interface RepoState {
   info: RepoInfo | null;
   graph: Graph | null;
@@ -21,19 +26,45 @@ interface RepoState {
   detail: CommitDetail | null;
   loading: boolean;
   error: string | null;
+  staging: StagingState;
 
   open: (path: string) => Promise<void>;
   refresh: () => Promise<void>;
+  /** Status only — no graph re-walk, no reselect. Cheap after a stage/unstage. */
+  refreshStatus: () => Promise<void>;
   select: (id: string | null) => Promise<void>;
   dismissError: () => void;
+  stagePaths: (paths: string[]) => Promise<void>;
+  unstagePaths: (paths: string[]) => Promise<void>;
 }
 
+/** The `{ code, message, details? }` shape every `CoreError` now serialises to
+ * (design.md §5.2). `message` is always `self.to_string()`, so the three
+ * pre-existing variants render byte-identically to before this change. */
+export interface CoreErrorWire {
+  code: string;
+  message: string;
+  details?: unknown;
+}
+
+const isWire = (error: unknown): error is CoreErrorWire =>
+  typeof error === "object" &&
+  error !== null &&
+  typeof (error as CoreErrorWire).code === "string" &&
+  typeof (error as CoreErrorWire).message === "string";
+
+/** Anything the backend rejects with, normalised. Never throws. */
+export const asCoreError = (error: unknown): CoreErrorWire =>
+  isWire(error) ? error : { code: "unknown", message: describe(error) };
+
 const describe = (error: unknown): string =>
-  typeof error === "string"
-    ? error
-    : error instanceof Error
-      ? error.message
-      : JSON.stringify(error);
+  isWire(error)
+    ? error.message
+    : typeof error === "string"
+      ? error
+      : error instanceof Error
+        ? error.message
+        : JSON.stringify(error);
 
 export const rememberedRepo = (): string | null =>
   localStorage.getItem(LAST_REPO_KEY);
@@ -47,6 +78,7 @@ export const useRepo = create<RepoState>((set, get) => ({
   detail: null,
   loading: false,
   error: null,
+  staging: { busy: false, error: null },
 
   open: async (path) => {
     set({ loading: true, error: null });
@@ -60,6 +92,7 @@ export const useRepo = create<RepoState>((set, get) => ({
         status: null,
         selectedId: null,
         detail: null,
+        staging: { busy: false, error: null },
       });
       await get().refresh();
     } catch (error) {
@@ -111,4 +144,39 @@ export const useRepo = create<RepoState>((set, get) => ({
   },
 
   dismissError: () => set({ error: null }),
+
+  refreshStatus: async () => {
+    const { info, staging } = get();
+    if (!info || staging.busy) return;
+    try {
+      const status = await api.workingStatus(info.path);
+      set({ status });
+    } catch (error) {
+      set({ error: describe(error) });
+    }
+  },
+
+  stagePaths: async (paths) => {
+    const { info } = get();
+    if (!info || paths.length === 0) return;
+    set({ staging: { busy: true, error: null } });
+    try {
+      const outcome = await api.stagePaths(info.path, paths);
+      set({ status: outcome.status, staging: { busy: false, error: null } });
+    } catch (error) {
+      set({ staging: { busy: false, error: asCoreError(error) } });
+    }
+  },
+
+  unstagePaths: async (paths) => {
+    const { info } = get();
+    if (!info || paths.length === 0) return;
+    set({ staging: { busy: true, error: null } });
+    try {
+      const outcome = await api.unstagePaths(info.path, paths);
+      set({ status: outcome.status, staging: { busy: false, error: null } });
+    } catch (error) {
+      set({ staging: { busy: false, error: asCoreError(error) } });
+    }
+  },
 }));

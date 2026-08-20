@@ -107,3 +107,15 @@ export interface WorkingStatus {
   unstaged: FileChange[];
   conflicted: string[];
 }
+
+export type SkipReason = "vanished";
+
+export interface SkippedPath {
+  path: string;
+  reason: SkipReason;
+}
+
+export interface WriteOutcome {
+  status: WorkingStatus;
+  skipped: SkippedPath[];
+}
