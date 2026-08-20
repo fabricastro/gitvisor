@@ -170,3 +170,40 @@ pub const REMOTE_REFS: &[(&str, &str)] = &[("origin/main", "m4"), ("origin/featu
 /// `(annotated tag name, alias it points at)`. `m1` is not the tip of any
 /// branch, so this exercises a tag drawn mid-graph.
 pub const TAG: (&str, &str) = ("v0.1.0", "m1");
+
+// ---------------------------------------------------------------------------
+// The `writes` recipe (design.md §9.2, §12). Dedicated to write-path specs —
+// staging, unstaging, and (later) committing — so `history` above stays
+// exactly what it always was: shared, read-only, asserted byte-for-byte by
+// `determinism.rs`. Three linear commits, no fan-out, no merge, no tag —
+// graph-layout coverage is `history`'s job, not this one's.
+
+pub const WRITES_COMMITS: &[CommitSpec] = &[
+    CommitSpec {
+        alias: "w1",
+        parents: &[],
+        file: "README.md",
+        content: b"# writes fixture\n\nDeterministic repository used by write-path e2e specs.\n",
+        summary: "root commit",
+    },
+    CommitSpec {
+        alias: "w2",
+        parents: &["w1"],
+        file: "tracked-a.txt",
+        content: b"tracked a, version 1\n",
+        summary: "add tracked-a.txt",
+    },
+    CommitSpec {
+        alias: "w3",
+        parents: &["w2"],
+        file: "tracked-b.txt",
+        content: b"tracked b, version 1\n",
+        summary: "add tracked-b.txt",
+    },
+];
+
+pub const WRITES_HEAD_ALIAS: &str = "w3";
+
+/// `(local branch name, alias it points at)`. `writes` has exactly one
+/// branch — nothing here exercises branch fan-out.
+pub const WRITES_LOCAL_BRANCHES: &[(&str, &str)] = &[("main", "w3")];

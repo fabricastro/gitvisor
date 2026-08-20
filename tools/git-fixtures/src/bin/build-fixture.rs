@@ -1,19 +1,23 @@
-//! Rebuild the `history` fixture and write its `fixture.json` manifest.
+//! Rebuild a named fixture recipe and write its `fixture.json` manifest.
 //!
 //! ```text
-//! cargo run -p git-fixtures --bin build-fixture -- [out-dir]
+//! cargo run -p git-fixtures --bin build-fixture -- [--out-root <dir>] [--name <recipe>]
 //! ```
 //!
-//! `out-dir` defaults to `target/e2e-fixtures`; the fixture lands at
-//! `<out-dir>/history/`. Already covered by the repo's `.gitignore` `target/`
-//! entry, and removed + rebuilt on every run — determinism makes that free.
+//! `--out-root` defaults to `target/e2e-fixtures` (unchanged); `--name`
+//! selects a **recipe** (`history` or `writes`) and defaults to `history`
+//! (unchanged) — so existing callers (`package.json`'s `e2e:mocks`,
+//! `wdio.native.conf.ts`'s `onPrepare`) need no argument changes
+//! (design.md §9.1). The fixture lands at `<out-root>/<name>/`. Already
+//! covered by the repo's `.gitignore` `target/` entry, and removed + rebuilt
+//! on every run — determinism makes that free.
 
 use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
 
 use git_core::repo::GitRepo;
-use git_fixtures::{build, spec};
+use git_fixtures::{build, build_writes, spec, BuildResult};
 use serde::Serialize;
 
 /// The manifest is the single Rust↔TypeScript seam (design.md §2.4): no OID,
@@ -37,6 +41,10 @@ struct Manifest {
     branches: Vec<String>,
     remotes: Vec<String>,
     tags: Vec<String>,
+    /// The fixture's own `repo.status()`, serialised — every fixture gets
+    /// this (design.md §9.4, tasks.md 6.3), so a write spec reads the path
+    /// to stage from the manifest instead of hardcoding it.
+    initial_status: git_core::model::WorkingStatus,
 }
 
 #[derive(Serialize)]
@@ -49,15 +57,74 @@ struct CommitManifest {
     lane: u32,
 }
 
-fn main() {
-    let out_root: PathBuf = env::args()
-        .nth(1)
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("target/e2e-fixtures"));
-    let name = "history";
-    let out_dir = out_root.join(name);
+struct Args {
+    out_root: PathBuf,
+    name: String,
+}
 
-    let result = build(&out_dir).expect("fixture build failed");
+fn parse_args() -> Args {
+    let mut out_root = PathBuf::from("target/e2e-fixtures");
+    let mut name = "history".to_string();
+
+    let mut args = env::args().skip(1);
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--out-root" => {
+                out_root = args
+                    .next()
+                    .map(PathBuf::from)
+                    .expect("--out-root needs a value")
+            }
+            "--name" => name = args.next().expect("--name needs a value"),
+            other => panic!("unknown argument: {other}"),
+        }
+    }
+
+    Args { out_root, name }
+}
+
+fn main() {
+    let args = parse_args();
+    let out_dir = args.out_root.join(&args.name);
+
+    let (result, commit_specs, branches, remotes, tags): (
+        BuildResult,
+        &[spec::CommitSpec],
+        Vec<String>,
+        Vec<String>,
+        Vec<String>,
+    ) = match args.name.as_str() {
+        "history" => {
+            let result = build(&out_dir).expect("fixture build failed");
+            (
+                result,
+                spec::COMMITS,
+                spec::LOCAL_BRANCHES
+                    .iter()
+                    .map(|(name, _)| name.to_string())
+                    .collect(),
+                spec::REMOTE_REFS
+                    .iter()
+                    .map(|(name, _)| name.to_string())
+                    .collect(),
+                vec![spec::TAG.0.to_string()],
+            )
+        }
+        "writes" => {
+            let result = build_writes(&out_dir).expect("fixture build failed");
+            (
+                result,
+                spec::WRITES_COMMITS,
+                spec::WRITES_LOCAL_BRANCHES
+                    .iter()
+                    .map(|(name, _)| name.to_string())
+                    .collect(),
+                vec![],
+                vec![],
+            )
+        }
+        other => panic!("unknown fixture recipe \"{other}\" (known: history, writes)"),
+    };
 
     // Real lane layout, computed by the same algorithm the product uses —
     // not re-derived or guessed here.
@@ -86,7 +153,7 @@ fn main() {
         .iter()
         .map(|(alias, oid)| {
             let id = oid.to_string();
-            let summary = spec::COMMITS
+            let summary = commit_specs
                 .iter()
                 .find(|c| c.alias == alias)
                 .map(|c| c.summary.to_string())
@@ -101,8 +168,10 @@ fn main() {
         })
         .collect();
 
+    let initial_status = repo.status().expect("initial working status");
+
     let manifest = Manifest {
-        name: name.to_string(),
+        name: args.name.clone(),
         path: out_dir
             .canonicalize()
             .expect("canonicalize fixture path")
@@ -115,21 +184,16 @@ fn main() {
         row0_alias,
         row0_lane,
         commits,
-        branches: spec::LOCAL_BRANCHES
-            .iter()
-            .map(|(name, _)| name.to_string())
-            .collect(),
-        remotes: spec::REMOTE_REFS
-            .iter()
-            .map(|(name, _)| name.to_string())
-            .collect(),
-        tags: vec![spec::TAG.0.to_string()],
+        branches,
+        remotes,
+        tags,
+        initial_status,
     };
 
     let manifest_path = out_dir.join("fixture.json");
     let json = serde_json::to_string_pretty(&manifest).expect("serialize fixture manifest");
     std::fs::write(&manifest_path, json).expect("write fixture manifest");
 
-    println!("fixture built at {}", out_dir.display());
+    println!("fixture \"{}\" built at {}", args.name, out_dir.display());
     println!("manifest: {}", manifest_path.display());
 }
