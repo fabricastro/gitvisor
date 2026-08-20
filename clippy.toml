@@ -1,0 +1,21 @@
+disallowed-methods = [
+  # The index-freshness invariant (M2 / design.md §1). Obtain an index only
+  # through GitRepo::with_fresh_index, which calls read(true) first.
+  { path = "git2::Repository::index",       reason = "use GitRepo::with_fresh_index (M2: stale index destroys external `git add`)" },
+  { path = "git2::Index::open",             reason = "use GitRepo::with_fresh_index" },
+  # Unstage is index-only. These reach the working tree (proposal §7 risk 2).
+  { path = "git2::Repository::reset",       reason = "unstage is index-only; restore the HEAD tree entry instead" },
+  { path = "git2::Repository::reset_default", reason = "takes pathspecs, which glob; see design.md §8" },
+  { path = "git2::Repository::checkout_head",  reason = "would overwrite uncommitted work" },
+  { path = "git2::Repository::checkout_tree",  reason = "would overwrite uncommitted work" },
+  { path = "git2::Repository::checkout_index", reason = "would overwrite uncommitted work" },
+  # Stage exactly what the user pointed at (proposal §7 risk 3).
+  { path = "git2::Index::add_all",    reason = "stage the listed paths, never a glob" },
+  { path = "git2::Index::remove_all", reason = "unstage the listed paths, never a glob" },
+  { path = "git2::Index::update_all", reason = "stage the listed paths, never a glob" },
+  # Author identity (M5 / design.md §5.1). libgit2 reads config only; `git`
+  # honours GIT_AUTHOR_*. The two were MEASURED disagreeing in both directions.
+  # Not used yet in this change (commit is a later change) — denied now so the
+  # trap cannot be reached by any future addition, including the commit change.
+  { path = "git2::Repository::signature", reason = "identity comes from `git var GIT_AUTHOR_IDENT`, not libgit2 (M5)" },
+]

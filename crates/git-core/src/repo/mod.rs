@@ -4,6 +4,8 @@
 //! crate works on plain data, which keeps the graph algorithm testable without
 //! creating repositories on disk.
 
+mod index_guard;
+
 use std::collections::HashMap;
 use std::path::Path;
 

@@ -9,3 +9,8 @@ license.workspace = true
 git2.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+# Throwaway repositories for write-path tests only (index_freshness,
+# stage/unstage). Not a runtime dependency of the domain crate.
+tempfile = "3"

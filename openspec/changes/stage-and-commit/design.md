@@ -215,17 +215,18 @@ Two sanctioned exemptions, each an `#[allow]` with a comment — greppable, revi
 silently:
 
 - `index_guard.rs` — the two `Repository::index()` call sites above.
-- `tools/git-fixtures/src/lib.rs:134` — `checkout_head` + `CheckoutBuilder::force`. Writing a working tree
-  is that binary's entire job; it builds throwaway fixtures, never a user repository.
+- `tools/git-fixtures/src/lib.rs` — `checkout_head` + `CheckoutBuilder::force`, and the one `Repository::index()`
+  call in `write_working_directory_dirt` that stages the fixture's own "queued for the next commit" file.
+  Writing a working tree is that binary's entire job; it builds throwaway fixtures, never a user repository, so
+  `with_fresh_index`'s M2 guarantee has nothing to protect there.
+- `crates/git-core/tests/support/mod.rs` — one `Repository::index()` call building a throwaway test repository.
+  Test scaffolding, not a product write path.
 
-> **U3 — unverified.** Whether `clippy.toml`'s `disallowed-methods` resolves paths to *inherent methods of a
-> foreign type* (`git2::Repository::index`) has not been run here. **Cheap check (5 min):** add the
-> `clippy.toml`, add a throwaway `let _ = self.inner.index();` in `repo.rs`, run
-> `cargo clippy -p git-core`, confirm it errors, delete the line. If path resolution does not work, fall
-> back to a `crates/git-core/tests/index_discipline.rs` source-scan test asserting `.index()` appears in
-> exactly one file — the same technique the harness change uses for its release-artifact byte scan
-> (`visual-verification-harness/design.md` §1.3), for the same reason: a convention that is not a build
-> failure is a comment.
+> **U3 — resolved 2026-08-20.** `clippy.toml`'s `disallowed-methods` *does* resolve paths to inherent methods
+> of a foreign type. Ran: added `clippy.toml`, added a throwaway `let _ = self.inner.index();` in `repo.rs`,
+> ran `cargo clippy -p git-core -- -D clippy::disallowed-methods` — it errored citing the configured reason
+> string exactly, then removed the line and re-ran clean. The lint is the enforcement mechanism; the
+> source-scan fallback (`crates/git-core/tests/index_discipline.rs`) was not needed and was not written.
 
 ### 1.4 The behavioural guarantee
 
@@ -243,6 +244,18 @@ crates/git-core/tests/index_freshness.rs
 The external `git add` must be a real subprocess. An in-process `index.add_path` would share libgit2's
 in-memory state and would not reproduce the measured condition — the same "positive control" discipline the
 hook experiment used (`explore.md` §Orchestrator verification).
+
+**Discovered while implementing the replay test (2026-08-20):** `Repository::statuses()` — which every
+`stage`/`unstage` pre-flight calls before ever reaching `with_fresh_index` — has an incidental side effect of
+soft-syncing libgit2's cached index. That side effect happens to mask the M2 race when replayed through the
+public `stage()` API, which is *not* evidence that `read(true)` is unnecessary: a soft sync is what M2's own
+caveat already warns is unreliable ("mtime granularity can hide a same-second external write"), and depending
+on a pre-flight check calling `status()` first everywhere a write occurs is exactly the "discipline instead of
+structure" this module exists to remove. The regression test that actually isolates and proves the
+`read(true)` invariant calls `with_fresh_index` directly, bypassing the pre-flight
+(`crates/git-core/src/repo/index_guard.rs::tests::m2_external_git_add_survives_with_fresh_index`);
+`crates/git-core/tests/index_freshness.rs` is kept alongside it as the black-box, public-API replay of
+spec.md's literal scenario.
 
 ### 1.5 A property the closure gives for free
 
@@ -1123,7 +1136,7 @@ Nothing below is claimed as settled. Each has a stated cost of finding out.
 |---|---|---|---|---|
 | U1 | Real `gpg`/`ssh` pinentry behaviour with and without a controlling TTY | **Unverified.** M3 used a stub signer on macOS only | §3.5 P1/P2/P3, ~30 min on both platforms | **No.** The timeout plus §2.4's HEAD read handles any hang |
 | U2 | Does the SIGTERM-to-process-group actually reap a blocked `pinentry`? | **Unverified** | `pgrep` after the timeout, folded into P1–P3 | No — a survivor is an annoyance, not a wrong report |
-| U3 | Does `clippy.toml` `disallowed-methods` resolve `git2::Repository::index`? | **Unverified** | §1.3, 5 min | Partially — fallback is a source-scan test (§1.3) |
+| U3 | Does `clippy.toml` `disallowed-methods` resolve `git2::Repository::index`? | **Verified 2026-08-20** — `cargo clippy -p git-core -- -D clippy::disallowed-methods` errored on a throwaway `self.inner.index()` call with the exact configured reason string, then passed once the line was removed | §1.3, 5 min | The lint is the enforcement mechanism; no source-scan fallback needed |
 | U4 | Does `@wdio/tauri-service` re-spawn the app per spec file? | **Unverified** | §9.3 C1, 5 min | **No.** Separate config sidesteps it |
 | U5 | Does a cached `Repository` observe an external HEAD move? | **Unverified** (carried from `measurements.md`) | Open a repo, commit externally, re-read HEAD | **No.** Fresh handle for every post-write HEAD read (§2.4) |
 | U6 | Does libgit2 honour `:(literal)` pathspec magic? | **Unverified** | — | **No.** No pathspec API is used (§8) |
