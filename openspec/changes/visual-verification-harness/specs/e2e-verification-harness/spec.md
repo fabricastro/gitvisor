@@ -78,7 +78,7 @@ Browser-mode `invoke()` mocks MUST be generated from `crates/git-core/examples/d
 
 ### Requirement: CI Trigger Matrix
 
-CI MUST run the fast gate (unit tests, clippy, fmt, `pnpm build`, the release-safety build-graph check, browser-mode e2e) blocking on every push/PR. Native WebKitGTK e2e SHOULD run non-blocking toward `main`, tracked pending `fix-graph-viewport`. Native WKWebView e2e plus the release-binary artifact scan MUST run nightly, on `workflow_dispatch`, and on release tags.
+CI MUST run the fast gate (unit tests, clippy, fmt, `pnpm build`, the release-safety build-graph check, browser-mode e2e) blocking on every push/PR. Native WebKitGTK e2e MUST run blocking on push/PR toward `main`. Native WKWebView e2e plus the release-binary artifact scan MUST run nightly, on `workflow_dispatch`, and on release tags. No native job may run under `continue-on-error`.
 
 #### Scenario: Fast gate runs on every push/PR
 - GIVEN a push or pull request
@@ -86,7 +86,7 @@ CI MUST run the fast gate (unit tests, clippy, fmt, `pnpm build`, the release-sa
 - THEN tests, clippy, fmt, `pnpm build`, the build-graph check, and browser-mode e2e all run and block on failure
 
 #### Scenario: Native e2e runs on slower triggers
-- GIVEN a PR/push to `main` THEN WebKitGTK e2e runs under `continue-on-error`, Spec B's red result recorded but non-blocking
+- GIVEN a PR/push to `main` THEN WebKitGTK e2e runs and blocks on failure
 - AND GIVEN nightly, dispatch, or a release tag THEN WKWebView e2e runs on macOS with the release-binary artifact scan
 
 ### Requirement: Contributor Commands Use Only Free, Open-Source Tooling
@@ -97,3 +97,12 @@ Every command a contributor needs to run the harness locally MUST be documented 
 - GIVEN a fresh checkout
 - WHEN the contributor follows the documented commands
 - THEN the fixture, browser-mode e2e, and native-mode e2e all run using free/open-source packages only
+
+---
+
+**Amended 2026-08-20.** The CI Trigger Matrix originally described Native
+WebKitGTK e2e as non-blocking, tracked pending `fix-graph-viewport`. That change
+has landed (Spec B is green) and the Linux probe has passed on `ubuntu-latest`,
+so the temporary allowance no longer applies and the requirement is tightened to
+match the shipped workflows. Recorded here rather than silently rewritten: the
+implementation exceeded this text, and the text was the thing that was wrong.
