@@ -119,3 +119,19 @@ export interface WriteOutcome {
   status: WorkingStatus;
   skipped: SkippedPath[];
 }
+
+export type CommitWarning =
+  | { kind: "nonZeroExitButHeadMoved"; exitCode: number; stderr: string }
+  | { kind: "timedOutButHeadMoved"; stderr: string };
+
+export interface CommitOutcome {
+  id: string;
+  shortId: string;
+  warning: CommitWarning | null;
+}
+
+export interface GitProbe {
+  available: boolean;
+  path: string | null;
+  version: string | null;
+}

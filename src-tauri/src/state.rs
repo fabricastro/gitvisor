@@ -34,4 +34,13 @@ impl RepoRegistry {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .remove(path);
     }
+
+    /// Drop a cached repository after a successful commit, so the next
+    /// command reopens rather than trusting a `Repository` ref view this
+    /// design has chosen not to trust (design.md §2.4, §12). Same body as
+    /// `close`, different name: the call site should read as cache
+    /// invalidation, not tab closing.
+    pub fn invalidate(&self, path: &str) {
+        self.close(path);
+    }
 }

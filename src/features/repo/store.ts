@@ -2,12 +2,21 @@ import { create } from "zustand";
 
 import type {
   CommitDetail,
+  CommitWarning,
+  GitProbe,
   Graph,
   RefEntry,
   RepoInfo,
   WorkingStatus,
 } from "@/shared/types";
 import * as api from "./api";
+
+/** `git` path override, remembered the same way `rememberedRepo()` remembers
+ * the last repository (design.md §4.2) — no new persistence layer. */
+const GIT_PATH_KEY = "gitvisor:git-path";
+
+const rememberedGitPath = (): string | undefined =>
+  localStorage.getItem(GIT_PATH_KEY) ?? undefined;
 
 /** Remembers the last repository so a restart lands straight back in it. */
 const LAST_REPO_KEY = "gitvisor:last-repo";
@@ -27,6 +36,10 @@ interface RepoState {
   loading: boolean;
   error: string | null;
   staging: StagingState;
+  gitProbe: GitProbe | null;
+  /** Set when a commit succeeded but `git` reported something unusual —
+   * never a refusal (design.md §2.5). Cleared on the next commit attempt. */
+  commitWarning: CommitWarning | null;
 
   open: (path: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -36,6 +49,10 @@ interface RepoState {
   dismissError: () => void;
   stagePaths: (paths: string[]) => Promise<void>;
   unstagePaths: (paths: string[]) => Promise<void>;
+  /** Sets the same `staging.busy` flag stage/unstage use, so `refreshStatus()`'s
+   * existing "never fire while a write is in flight" guard already covers a
+   * commit too (design.md §3.4, §11) — no separate `committing` flag needed. */
+  createCommit: (message: string) => Promise<void>;
 }
 
 /** The `{ code, message, details? }` shape every `CoreError` now serialises to
@@ -79,6 +96,8 @@ export const useRepo = create<RepoState>((set, get) => ({
   loading: false,
   error: null,
   staging: { busy: false, error: null },
+  gitProbe: null,
+  commitWarning: null,
 
   open: async (path) => {
     set({ loading: true, error: null });
@@ -93,8 +112,17 @@ export const useRepo = create<RepoState>((set, get) => ({
         selectedId: null,
         detail: null,
         staging: { busy: false, error: null },
+        gitProbe: null,
       });
       await get().refresh();
+      // A hint, not authoritative (design.md §4.4) — never blocks `refresh()`.
+      try {
+        const probe = await api.gitProbe(info.path, rememberedGitPath());
+        set({ gitProbe: probe });
+      } catch {
+        // Leave gitProbe null; the commit control renders "unknown"/disabled
+        // rather than crash the whole repo open on a probe failure.
+      }
     } catch (error) {
       localStorage.removeItem(LAST_REPO_KEY);
       set({ error: describe(error), info: null });
@@ -175,6 +203,24 @@ export const useRepo = create<RepoState>((set, get) => ({
     try {
       const outcome = await api.unstagePaths(info.path, paths);
       set({ status: outcome.status, staging: { busy: false, error: null } });
+    } catch (error) {
+      set({ staging: { busy: false, error: asCoreError(error) } });
+    }
+  },
+
+  createCommit: async (message) => {
+    const { info } = get();
+    if (!info || message.trim().length === 0) return;
+    set({ staging: { busy: true, error: null }, commitWarning: null });
+    try {
+      const outcome = await api.createCommit(info.path, message, rememberedGitPath());
+      set({
+        staging: { busy: false, error: null },
+        commitWarning: outcome.warning,
+      });
+      // The graph really did change — the full refresh (not refreshStatus)
+      // re-walks it and re-selects, unlike a stage/unstage (design.md §11).
+      await get().refresh();
     } catch (error) {
       set({ staging: { busy: false, error: asCoreError(error) } });
     }

@@ -28,6 +28,13 @@ use serde_json::Value;
 /// (design.md §4.1) — a raw dump would make the CI diff fail on every run.
 const FIXTURE_PATH_TOKEN: &str = "{{FIXTURE_PATH}}";
 
+/// `git_probe`'s `path`/`version` are read from whatever `git` the machine
+/// building the mocks actually has (design.md §9.4) — both machine-specific
+/// and would make the CI diff fail on every runner with a different `git`
+/// installed. Tokenised the same way `FIXTURE_PATH_TOKEN` is.
+const GIT_PATH_TOKEN: &str = "{{GIT_PATH}}";
+const GIT_VERSION_TOKEN: &str = "{{GIT_VERSION}}";
+
 /// Mocks keyed by Tauri command name (`src-tauri/src/commands.rs`). Plain
 /// field names, not `camelCase` — the outer keys are literal `invoke()`
 /// command strings the frontend passes, not model data.
@@ -44,6 +51,13 @@ struct Mocks {
     /// `close_repository` returns nothing; recorded anyway so every command
     /// `commands.rs` exposes has a mock entry.
     close_repository: Value,
+    /// `git` resolution is machine-specific and never executes a write —
+    /// this is the one entry `dump-mocks` produces by *reading* the building
+    /// machine's own `git`, never by mutating a repository (design.md §9.4).
+    /// `stage_paths`/`unstage_paths`/`create_commit` are deliberately absent:
+    /// their payloads are write outcomes, derived per-spec from
+    /// `working_status`, never generated here.
+    git_probe: Value,
 }
 
 struct Args {
@@ -94,6 +108,19 @@ fn main() {
     let list_refs = repo.refs().expect("refs");
     let working_status = repo.status().expect("working status");
 
+    let mut git_probe =
+        serde_json::to_value(git_core::git_binary::probe(None)).expect("serialize GitProbe");
+    if let Some(path) = git_probe.get_mut("path") {
+        if !path.is_null() {
+            *path = Value::String(GIT_PATH_TOKEN.to_string());
+        }
+    }
+    if let Some(version) = git_probe.get_mut("version") {
+        if !version.is_null() {
+            *version = Value::String(GIT_VERSION_TOKEN.to_string());
+        }
+    }
+
     let commit_detail: BTreeMap<String, Value> = graph
         .rows
         .iter()
@@ -116,6 +143,7 @@ fn main() {
         working_status: serde_json::to_value(&working_status).expect("serialize WorkingStatus"),
         commit_detail,
         close_repository: Value::Null,
+        git_probe,
     };
 
     if let Some(parent) = args.out.parent() {

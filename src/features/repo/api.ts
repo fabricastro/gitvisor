@@ -6,6 +6,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   CommitDetail,
+  CommitOutcome,
+  GitProbe,
   Graph,
   RefEntry,
   RepoInfo,
@@ -48,4 +50,17 @@ export function stagePaths(path: string, paths: string[]): Promise<WriteOutcome>
 
 export function unstagePaths(path: string, paths: string[]): Promise<WriteOutcome> {
   return invoke("unstage_paths", { path, paths });
+}
+
+/** Whether `git` is resolvable for the commit step (design.md §4.4). */
+export function gitProbe(path: string, gitOverride?: string): Promise<GitProbe> {
+  return invoke("git_probe", { path, gitOverride: gitOverride ?? null });
+}
+
+export function createCommit(
+  path: string,
+  message: string,
+  gitOverride?: string,
+): Promise<CommitOutcome> {
+  return invoke("create_commit", { path, message, gitOverride: gitOverride ?? null });
 }

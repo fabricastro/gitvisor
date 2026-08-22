@@ -28,18 +28,31 @@ export interface HistoryMocks {
   /** Keyed by commit OID — see `dump-mocks.rs`. */
   commit_detail: Record<string, unknown>;
   close_repository: null;
+  /** Machine-specific `path`/`version` — tokenised by `dump-mocks.rs`, same
+   * as `open_repository.path` (design.md §9.4). */
+  git_probe: { available: boolean; path: string | null; version: string | null };
 }
 
 const FIXTURE_PATH_TOKEN = "{{FIXTURE_PATH}}";
+const GIT_PATH_TOKEN = "{{GIT_PATH}}";
+const GIT_VERSION_TOKEN = "{{GIT_VERSION}}";
 
 /**
  * Browser mode never touches a real filesystem (design.md §4.2) — this only
  * has to look like an absolute path; nothing on the mocked side reads disk.
  */
 const BROWSER_FIXTURE_PATH = "/mock/e2e-fixtures/history";
+const BROWSER_GIT_PATH = "/mock/bin/git";
+const BROWSER_GIT_VERSION = "git version 0.0.0-mock";
 
 function substituteToken<T>(value: T): T {
-  const json = JSON.stringify(value).split(FIXTURE_PATH_TOKEN).join(BROWSER_FIXTURE_PATH);
+  const json = JSON.stringify(value)
+    .split(FIXTURE_PATH_TOKEN)
+    .join(BROWSER_FIXTURE_PATH)
+    .split(GIT_PATH_TOKEN)
+    .join(BROWSER_GIT_PATH)
+    .split(GIT_VERSION_TOKEN)
+    .join(BROWSER_GIT_VERSION);
   return JSON.parse(json) as T;
 }
 
@@ -80,6 +93,7 @@ export async function installMocks(mocks: HistoryMocks): Promise<void> {
     ["working_status", mocks.working_status],
     ["close_repository", mocks.close_repository],
     ["commit_detail", Object.values(mocks.commit_detail)[0] ?? null],
+    ["git_probe", mocks.git_probe],
   ];
 
   for (const [command, value] of constantMocks) {

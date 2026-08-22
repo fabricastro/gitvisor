@@ -1,11 +1,11 @@
 import { useRepo } from "@/features/repo/store";
 import { ChangeList } from "./ChangeList";
+import { CommitBox } from "./CommitBox";
 import { RefusalNotice } from "./RefusalNotice";
 
 /**
- * Container. Reads `status`/`staging` from the store; owns no markup
- * decisions (design.md §11). Committing is a later change (2026-08-20
- * delivery split) — this panel only stages and unstages.
+ * Container. Reads `status`/`staging`/`gitProbe` from the store; owns no
+ * markup decisions (design.md §11).
  *
  * Rendered inside the sidebar rather than as its own column. As a fourth
  * column it left roughly 530px for the history pane at 1440px, truncating
@@ -16,6 +16,10 @@ export function WorkingDirectoryPanel() {
   const staging = useRepo((state) => state.staging);
   const stagePaths = useRepo((state) => state.stagePaths);
   const unstagePaths = useRepo((state) => state.unstagePaths);
+  const gitProbe = useRepo((state) => state.gitProbe);
+  const commitWarning = useRepo((state) => state.commitWarning);
+  const createCommit = useRepo((state) => state.createCommit);
+  const info = useRepo((state) => state.info);
 
   const staged = status?.staged ?? [];
   const unstaged = status?.unstaged ?? [];
@@ -62,6 +66,15 @@ export function WorkingDirectoryPanel() {
           </p>
         </div>
       )}
+
+      <CommitBox
+        stagedCount={staged.length}
+        gitProbe={gitProbe}
+        busy={staging.busy}
+        detachedHead={info?.head?.detached ?? false}
+        commitWarning={commitWarning}
+        onCommit={(message) => void createCommit(message)}
+      />
     </section>
   );
 }

@@ -1329,5 +1329,10 @@
       "insertions": 1
     }
   },
-  "close_repository": null
+  "close_repository": null,
+  "git_probe": {
+    "available": true,
+    "path": "{{GIT_PATH}}",
+    "version": "{{GIT_VERSION}}"
+  }
 }
