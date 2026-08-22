@@ -578,6 +578,37 @@ macOS and Linux — the same two platforms the native specs now cover.
 plus §2.4's HEAD read handles a hang whatever its cause. The experiment tells us how *often* users will meet
 it and whether P2 deserves a startup warning, not whether the design is correct.
 
+> **P1/P2 — partially run, 2026-08-22.** Real `gpg` 2.5.21 + `pinentry-curses` 1.3.3 (installed via Homebrew
+> for this check), throwaway `GNUPGHOME`, a passphrased ed25519 key, `commit.gpgsign=true`,
+> `gpgconf --kill gpg-agent` beforehand. Driven through a script replaying the exact plumbing §2.2/§2.3
+> describe: piped stdin/stdout/stderr, message on stdin then EOF, child in its own process group
+> (`process_group(0)` equivalent), an 8 s soft deadline before the SIGTERM→5s→SIGKILL ladder would fire.
+>
+> - **P1 (no controlling terminal — this shell's session genuinely has none, confirmed via `tty` before the
+>   run):** `pinentry-curses` failed to open a terminal (`Inappropriate ioctl for device`), `gpg` reported
+>   `signing failed`, `git commit` exited 128 in **1.42 s** — well under the timeout, no SIGTERM ladder needed.
+>   **0 commits, HEAD unchanged.** Matches M3's shape exactly.
+> - **P2 (controlling terminal inherited, via a `script`-allocated pty):** **the same failure, in 1.48 s** —
+>   `pinentry-curses` still could not initialise, same ioctl error. The reason is the plumbing itself, not the
+>   terminal's absence: with git's own stdio piped (§2.3, deadlock avoidance), `pinentry-curses`'s ncurses
+>   screen setup needs a real terminal on *its* stdin/stdout, which it inherits from the piped `git` → `gpg` →
+>   `pinentry` chain regardless of whether a controlling terminal exists at the session level. **Under this
+>   design's exact subprocess plumbing, `pinentry-curses` cannot hang — it fails fast, in both P1 and P2.**
+> - **What this does *not* cover:** `pinentry-mac` — the GUI dialog a real macOS user's `gpg-agent` actually
+>   launches by default (not `pinentry-curses`, which was the design's explicitly specified test tool, §3.5).
+>   A GUI pinentry does not depend on inherited terminal stdio at all; it can open a system dialog and block
+>   indefinitely regardless of P1/P2's outcome above, and that scenario was **not** measured here — it needs a
+>   real windowed session, which this environment does not have. **P2's danger as originally worried about —
+>   a pinentry writing prompts into the user's inherited shell — did not materialise for the curses case, but
+>   is not ruled out for the GUI case.** Still unverified: `pinentry-mac` specifically, and P3 (SSH signing).
+>   Nothing in the design depends on the outcome either way (§2.4's HEAD read handles any hang shape); this
+>   remains a residual experiment, not a blocker.
+> - **U2 (pgrep survivors):** in both runs, the only lingering process after completion was the long-lived
+>   `gpg-agent --daemon` itself (expected background-daemon behaviour, unrelated to our commit's lifecycle,
+>   and never spawned as our child). No `pinentry` or `ssh-keygen` survivor in either run — but neither run
+>   actually reached the SIGTERM/SIGKILL ladder (both failed on their own, faster than the 8 s soft deadline),
+>   so **U2's actual question — does the ladder reap a *blocked* pinentry — is still unanswered.**
+
 ---
 
 ## 4. Locating `git` (open question 4)
@@ -737,13 +768,16 @@ citing M5 at the point where someone would otherwise reach for it.
 rejects the identity, that surfaces as `CommitFailed` with git's own message — correct, just less specific.
 This asymmetry is deliberate and is what makes U10 below a non-blocking question.
 
-> **U10 — unverified.** Whether `git var GIT_AUTHOR_IDENT` refuses in *exactly* the cases `git commit`
-> refuses. Git can auto-detect a name and email from the system; whether `git var` applies the same strict
-> check that makes `git commit` say *"unable to auto-detect email address"* has not been run here.
-> **Cheap check (5 min):** isolated `HOME`, no config, no env identity — run `git var GIT_AUTHOR_IDENT` and
-> `git commit` and compare exit codes; then repeat with a gecos name available but no email. If `git var`
-> turns out to be *stricter*, it would reintroduce a false refusal and the pre-flight must be relaxed to
-> reporting-only, letting `git commit`'s own refusal be the sole authority.
+> **U10 — resolved 2026-08-22.** Ran on macOS, `git` 2.50.1, isolated `HOME`, real subprocesses, comparing
+> exit codes of `git var GIT_AUTHOR_IDENT` and `git commit` in three cases: (1) isolated `HOME`, no config, no
+> env identity — both **succeed** (exit 0), via git's own gecos/hostname auto-detection, and both name the
+> same auto-detected identity; (2) the same, but with `-c user.useConfigOnly=true` (the flag that forces
+> git's strict "please tell me who you are" path) — both **refuse identically**, exit `128`, byte-identical
+> `fatal: no email was given and auto-detection is disabled` message; (3) `useConfigOnly=true` with
+> `GIT_AUTHOR_NAME` set but no email — same exit `128`, same message as (2). **`git var GIT_AUTHOR_IDENT` and
+> `git commit` agreed in every case tested — parity confirmed, not stricter.** §5.1's identity pre-flight
+> therefore stays a **hard refusal** (`IdentityMissing`), as originally decided; the reporting-only relaxation
+> this entry described as a fallback is not needed.
 
 ### 5.2 The wire shape, and why the existing seven commands are unaffected
 
@@ -1120,11 +1154,16 @@ existing `close()`, different name so the call site reads as cache invalidation 
 is cache lifecycle — the registry's own concern, not domain logic — and it keeps a subsequent
 `working_status` from being computed against a handle whose ref view we have chosen not to trust (§2.4).
 
-> **U7 — unverified.** Whether a synchronous `#[tauri::command]` blocking for minutes keeps the webview
-> repainting. **Cheap check (2 min):** point a repo's `pre-commit` hook at `sleep 30`, commit from Gitvisor,
-> and try to scroll the graph. If the window freezes, the fix is `async fn` + `spawn_blocking` on the commit
-> command only — a one-line change, but it should be made on evidence rather than on belief about Tauri's
-> threading model.
+> **U7 — resolved 2026-08-22.** A throwaway plain-sync `#[tauri::command] fn spike_u7_block(seconds: u64)`
+> (`std::thread::sleep`) was wired in, built with `pnpm run e2e:build`, and driven by a throwaway native wdio
+> spec against the real WKWebView session: fire an 8-second blocking `invoke()` without awaiting it from
+> Node, then sample `document.title` (a real webview JS round-trip) every ~300 ms while it runs. Result: **20
+> round-trips completed during the 6 s sampling window, each 4–19 ms, every one returning the correct
+> title.** The webview never stalled. Tauri v2 dispatches a plain (non-`async`) command handler off the
+> webview's own thread, so a long synchronous command does not block rendering or further IPC. **`create_commit`
+> does not need `async fn` + `spawn_blocking`; a plain sync command, matching every other command in this
+> codebase, is correct.** All spike code (the command, the spec, and the temporary `window.__spikeInvoke`
+> exposure in `main.tsx`) was removed immediately after the measurement; nothing from it ships.
 
 ---
 
@@ -1134,16 +1173,16 @@ Nothing below is claimed as settled. Each has a stated cost of finding out.
 
 | # | Claim | Status | Cheap check | Does the design depend on it? |
 |---|---|---|---|---|
-| U1 | Real `gpg`/`ssh` pinentry behaviour with and without a controlling TTY | **Unverified.** M3 used a stub signer on macOS only | §3.5 P1/P2/P3, ~30 min on both platforms | **No.** The timeout plus §2.4's HEAD read handles any hang |
-| U2 | Does the SIGTERM-to-process-group actually reap a blocked `pinentry`? | **Unverified** | `pgrep` after the timeout, folded into P1–P3 | No — a survivor is an annoyance, not a wrong report |
+| U1 | Real `gpg`/`ssh` pinentry behaviour with and without a controlling TTY | **Partially resolved 2026-08-22** — real `gpg`/`pinentry-curses`, P1 and P2 both run (see §3.5). Both failed fast (~1.4–1.5 s), never reached a hang: `pinentry-curses` cannot initialise against this design's piped-stdio plumbing regardless of controlling-terminal presence. **`pinentry-mac` (the real macOS GUI default) and P3 (SSH signing) remain unmeasured** — no windowed session available in the environment that ran this | §3.5 P1/P2/P3 | **No.** The timeout plus §2.4's HEAD read handles any hang, including an unmeasured GUI pinentry hang |
+| U2 | Does the SIGTERM-to-process-group actually reap a blocked `pinentry`? | **Still unverified** — P1/P2 above never reached the ladder (both failed on their own before the deadline), so no run has actually exercised a kill against a live `pinentry`. No survivor was observed in either run, but that is not evidence for U2's actual question | `pgrep` after the timeout, needs a signer that actually blocks (e.g. `pinentry-mac`) | No — a survivor is an annoyance, not a wrong report |
 | U3 | Does `clippy.toml` `disallowed-methods` resolve `git2::Repository::index`? | **Verified 2026-08-20** — `cargo clippy -p git-core -- -D clippy::disallowed-methods` errored on a throwaway `self.inner.index()` call with the exact configured reason string, then passed once the line was removed | §1.3, 5 min | The lint is the enforcement mechanism; no source-scan fallback needed |
 | U4 | Does `@wdio/tauri-service` re-spawn the app per spec file? | **Unverified** | §9.3 C1, 5 min | **No.** Separate config sidesteps it |
 | U5 | Does a cached `Repository` observe an external HEAD move? | **Unverified** (carried from `measurements.md`) | Open a repo, commit externally, re-read HEAD | **No.** Fresh handle for every post-write HEAD read (§2.4) |
 | U6 | Does libgit2 honour `:(literal)` pathspec magic? | **Unverified** | — | **No.** No pathspec API is used (§8) |
-| U7 | Does a long synchronous Tauri command freeze the webview? | **Unverified** | §12, 2 min | Mildly — a freeze means one `spawn_blocking` line |
+| U7 | Does a long synchronous Tauri command freeze the webview? | **Resolved 2026-08-22** — a throwaway sync command blocking 8 s, measured against the real WKWebView via a native wdio spec: 20 JS round-trips during the block, 4–19 ms each, webview never stalled | §12 | Resolved: no `spawn_blocking` needed. `create_commit` is a plain sync command |
 | U8 | Windows: anything | **Unverified — no Windows machine has ever run this project.** `which` handles `PATHEXT`; hooks are delegated to git (moot per D1); `Child::kill()` is the only kill available, so §3.3's measured SIGTERM behaviour does not transfer | Needs a machine | This change **does not claim Windows support** |
 | U9 | Does a hang *after* the commit object exists behave like M3's? | **Unverified** — M3 measured one hang point, before any object is written | Hard to stage deliberately | **No.** §3.2 reports observed HEAD, never an assumption |
-| U10 | Does `git var GIT_AUTHOR_IDENT` refuse in exactly the cases `git commit` refuses? | **Unverified** | §5.1, 5 min | Mildly — if `git var` is stricter, the pre-flight relaxes to reporting-only. The asymmetry in §5.1 (refuse early, never guarantee) is what keeps this non-blocking |
+| U10 | Does `git var GIT_AUTHOR_IDENT` refuse in exactly the cases `git commit` refuses? | **Resolved 2026-08-22** — three real-subprocess cases (auto-detected identity, forced strict refusal, forced strict refusal with a partial identity) all showed exact parity between `git var GIT_AUTHOR_IDENT` and `git commit`'s exit code and message | §5.1 | Resolved: the identity pre-flight is a hard refusal, not reporting-only |
 
 **Resolved since the first draft:** the author-identity question, which this document originally argued from
 the libgit2 API surface, is now **M5** — measured, in both directions. §5.1 states it as measured.
