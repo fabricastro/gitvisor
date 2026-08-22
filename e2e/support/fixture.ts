@@ -14,6 +14,21 @@ export interface FixtureCommit {
   lane: number;
 }
 
+export interface FixtureFileChange {
+  path: string;
+  oldPath: string | null;
+  status: string;
+  insertions: number;
+  deletions: number;
+  isBinary: boolean;
+}
+
+export interface FixtureWorkingStatus {
+  staged: FixtureFileChange[];
+  unstaged: FixtureFileChange[];
+  conflicted: string[];
+}
+
 export interface FixtureManifest {
   name: string;
   path: string;
@@ -28,13 +43,20 @@ export interface FixtureManifest {
   branches: string[];
   remotes: string[];
   tags: string[];
+  /** The fixture's own `repo.status()` at build time (design.md §9.4,
+   * tasks.md 6.3) — a write spec reads the path to stage from here instead
+   * of hardcoding it. */
+  initialStatus: FixtureWorkingStatus;
 }
 
 const FIXTURE_ROOT = "./target/e2e-fixtures";
 
 /** Read the manifest `build-fixture` wrote. Throws if it hasn't run yet. */
 export function readFixture(name = "history"): FixtureManifest {
-  const manifestPath = join(FIXTURE_ROOT, name, "fixture.json");
+  // Inside `.git/`, not the working tree — see `build-fixture.rs`'s comment
+  // at its manifest-write site: writing it into the working tree would make
+  // it its own untracked entry the moment anything re-reads status.
+  const manifestPath = join(FIXTURE_ROOT, name, ".git", "fixture.json");
   let raw: string;
   try {
     raw = readFileSync(manifestPath, "utf-8");

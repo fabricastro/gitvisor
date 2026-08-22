@@ -190,7 +190,16 @@ fn main() {
         initial_status,
     };
 
-    let manifest_path = out_dir.join("fixture.json");
+    // Inside `.git/`, not the working tree: `initial_status` above is a
+    // snapshot of the moment before this file exists, and writing it into
+    // the working tree would make it its own untracked entry the moment
+    // anything re-reads status — exactly the class of bug the `writes`
+    // recipe's `initialStatus` field exists to let a spec assert against
+    // precisely (discovered writing the native write spec's first run: a
+    // real `working_status` call after `open_repository` reported 4
+    // untracked entries where the manifest, computed a moment earlier,
+    // recorded 3 — `fixture.json` was the fourth).
+    let manifest_path = out_dir.join(".git").join("fixture.json");
     let json = serde_json::to_string_pretty(&manifest).expect("serialize fixture manifest");
     std::fs::write(&manifest_path, json).expect("write fixture manifest");
 

@@ -692,14 +692,6 @@
         "oldPath": null,
         "path": "README.md",
         "status": "modified"
-      },
-      {
-        "deletions": 0,
-        "insertions": 0,
-        "isBinary": false,
-        "oldPath": null,
-        "path": "fixture.json",
-        "status": "untracked"
       }
     ]
   },
