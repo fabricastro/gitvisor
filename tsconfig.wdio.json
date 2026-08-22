@@ -8,5 +8,11 @@
     "strict": false,
     "esModuleInterop": true
   },
-  "include": ["wdio.shared.conf.ts", "wdio.native.conf.ts", "wdio.browser.conf.ts", "e2e/**/*.ts"]
+  "include": [
+    "wdio.shared.conf.ts",
+    "wdio.native.conf.ts",
+    "wdio.native.writes.conf.ts",
+    "wdio.browser.conf.ts",
+    "e2e/**/*.ts"
+  ]
 }

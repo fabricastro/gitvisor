@@ -56,6 +56,13 @@ jobs:
       - name: "Spec B — graph-viewport regression"
         run: pnpm e2e:native:regressions
 
+      # The one native write spec spec.md's e2e-verification-harness delta
+      # requires (stage-and-commit design.md §10): a real `git` subprocess,
+      # against the dedicated `writes` fixture — never `history`, whose
+      # determinism this workflow's Spec A/B still depend on.
+      - name: "Spec C — write path (stage, commit through the UI, appears in the graph)"
+        run: pnpm e2e:native:writes
+
       - name: Upload native e2e artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4

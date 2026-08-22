@@ -14,6 +14,12 @@ name: E2E Native (Linux probe)
 # This workflow only implements the first rung of that ladder — promoting it
 # to a blocking trigger, or building the tauri-driver fallback, is future
 # work for whoever runs the probe, not something to pre-build speculatively.
+#
+# Also carries the one native write spec (stage-and-commit design.md §10),
+# which spec.md's e2e-verification-harness delta requires on both macOS
+# (e2e-native-macos.yml) and Linux — this file already has the WebKitGTK +
+# xvfb setup the write spec needs, so it lands here rather than in a third
+# workflow.
 on:
   # Promoted from workflow_dispatch-only on 2026-08-18: the probe passed on
   # ubuntu-latest (WebKitGTK 605.1.15, Spec A green), so Linux native coverage
@@ -70,6 +76,11 @@ jobs:
       # the harness boot at all", not "is the harness correct on Linux".
       - name: "Probe: Spec A — native smoke, under xvfb"
         run: xvfb-run --auto-servernum pnpm e2e:native:smoke
+
+      # The one native write spec (stage-and-commit design.md §10): real
+      # `git` subprocess, against the dedicated `writes` fixture.
+      - name: "Spec C — write path (stage, commit through the UI, appears in the graph), under xvfb"
+        run: xvfb-run --auto-servernum pnpm e2e:native:writes
 
       - name: Upload probe artifacts (always — a failed probe's screenshot is the point)
         if: always()
