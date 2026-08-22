@@ -195,3 +195,54 @@ pub struct WriteOutcome {
     pub status: WorkingStatus,
     pub skipped: Vec<SkippedPath>,
 }
+
+/// A commit request (design.md §3.3). `git_override` is the same override
+/// threaded through `git_binary::resolve` for staging's `GitProbe`; carrying
+/// it here too is what makes the timeout ladder and the hook/identity
+/// refusals testable in ~2 seconds against a fake `git` script (design.md
+/// §10), rather than only against real hangs. `timeout` defaults to
+/// `git_binary::default_commit_timeout()` when `None`.
+#[derive(Debug, Clone)]
+pub struct CommitRequest {
+    pub message: String,
+    pub git_override: Option<String>,
+    pub timeout: Option<std::time::Duration>,
+}
+
+/// Why a successful commit still carries a caveat — never a failure, since
+/// `HEAD` moved (design.md §2.5). The UI renders these as a warning banner
+/// alongside the new commit, not as a refusal.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum CommitWarning {
+    /// `git` exited non-zero, but `HEAD` moved anyway. Reported rather than
+    /// assumed away — the design does not classify this as unreachable.
+    NonZeroExitButHeadMoved { exit_code: i32, stderr: String },
+    /// The timeout ladder fired, but `HEAD` had already moved — the
+    /// duplicate-commit bug this whole mechanism exists to prevent, proven
+    /// absent rather than assumed absent (design.md §3.2).
+    TimedOutButHeadMoved { stderr: String },
+}
+
+/// A successful commit. `id`/`shortId` are read back through libgit2 from a
+/// freshly opened `Repository`, never parsed from `git`'s own stdout
+/// (design.md §2.4) — `git`'s human-readable output is not an API.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitOutcome {
+    pub id: String,
+    pub short_id: String,
+    pub warning: Option<CommitWarning>,
+}
+
+/// Whether the `git` binary needed for the commit step is available
+/// (design.md §4.4). A hint, not authoritative — the real check runs again
+/// at commit time, because the probe is allowed to go stale between an
+/// install/uninstall and the next commit.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitProbe {
+    pub available: bool,
+    pub path: Option<String>,
+    pub version: Option<String>,
+}

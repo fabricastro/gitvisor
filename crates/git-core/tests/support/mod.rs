@@ -4,6 +4,12 @@
 //! which is fine here: this is test scaffolding, not a product write path,
 //! and `crates/git-core`'s `#![deny(clippy::disallowed_methods)]` does not
 //! apply to `tests/*.rs` — each is compiled as its own crate.
+//!
+//! Each `tests/*.rs` file is its own crate root, with its own copy of this
+//! module. A helper used by only some of those files is legitimately
+//! "unused" from any one binary's point of view — not dead code, just not
+//! every test file needing every helper.
+#![allow(dead_code)]
 
 use std::path::Path;
 use std::process::Command;
@@ -75,6 +81,25 @@ pub fn commit_file(dir: &Path, path: &str, content: &[u8], summary: &str) {
 
     repo.commit(Some("HEAD"), &sig, &sig, summary, &tree, &parent_refs)
         .expect("commit");
+}
+
+/// Write an executable shell script standing in for `git`, injected through
+/// `CommitRequest.git_override` (design.md §10) — this is what makes the
+/// timeout ladder, the exit→outcome mapping, and the identity refusal
+/// testable in about two seconds instead of depending on a real hang.
+pub fn write_fake_git(dir: &Path, name: &str, body: &str) -> std::path::PathBuf {
+    let path = dir.join(name);
+    std::fs::write(&path, body).expect("write fake git script");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&path)
+            .expect("script metadata")
+            .permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&path, perms).expect("chmod fake git script");
+    }
+    path
 }
 
 /// Run a real `git` subprocess in `dir`. Used where the test specifically

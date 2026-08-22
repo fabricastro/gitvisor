@@ -13,6 +13,7 @@
 #![deny(clippy::disallowed_methods)]
 
 pub mod error;
+pub mod git_binary;
 pub mod graph;
 pub mod model;
 pub mod paths;

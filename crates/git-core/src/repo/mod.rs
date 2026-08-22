@@ -15,10 +15,12 @@ use git2::{
 };
 
 use crate::error::{CoreError, Result};
+use crate::git_binary;
 use crate::graph;
 use crate::model::{
-    ChangeStatus, Commit, CommitDetail, FileChange, Graph, HeadInfo, RefBadge, RefEntry, RefKind,
-    RepoInfo, Signature, SkipReason, SkippedPath, WorkingStatus, WriteOutcome,
+    ChangeStatus, Commit, CommitDetail, CommitOutcome, CommitRequest, CommitWarning, FileChange,
+    GitProbe, Graph, HeadInfo, RefBadge, RefEntry, RefKind, RepoInfo, Signature, SkipReason,
+    SkippedPath, WorkingStatus, WriteOutcome,
 };
 use crate::paths::normalise_repo_path;
 
@@ -422,8 +424,8 @@ impl GitRepo {
         Ok(WriteOutcome { status, skipped })
     }
 
-    /// Shared by `stage`, `unstage`, and (later) `commit`: every refusal
-    /// fires before any mutation (spec.md: "Commit and Staging Refusals Use
+    /// Shared by `stage`, `unstage`, and `commit`: every refusal fires
+    /// before any mutation (spec.md: "Commit and Staging Refusals Use
     /// Distinct, Machine-Readable Codes").
     fn preflight_write(&self) -> Result<()> {
         if self.inner.is_bare() {
@@ -434,6 +436,140 @@ impl GitRepo {
             return Err(CoreError::ConflictsPresent { paths: conflicted });
         }
         Ok(())
+    }
+
+    /// Whether the `git` binary needed for the commit step is available
+    /// (design.md §4.4). Stage and unstage never call this — they never
+    /// needed `git` (spec.md, "`git` Availability Gates Only the Commit
+    /// Step").
+    pub fn probe(&self, git_override: Option<&str>) -> GitProbe {
+        git_binary::probe(git_override)
+    }
+
+    /// Commit through the user's own `git` binary (design.md §2, §4b.5).
+    ///
+    /// Pre-flight order — every refusal before `git` is ever resolved, let
+    /// alone spawned: bare repository, conflicted paths, nothing staged, a
+    /// live `.git/index.lock`, `git` unavailable, then missing author
+    /// identity. The outcome is never read from the exit code alone: `HEAD`
+    /// is read through a **freshly opened** `Repository` before spawning and
+    /// after every terminal outcome — success, non-zero exit, signal death,
+    /// or the timeout ladder — because a cached `Repository`'s view of an
+    /// externally-moved `HEAD` is exactly the question `measurements.md`
+    /// leaves unverified (U5), and this design does not need the answer.
+    pub fn commit(&self, request: CommitRequest) -> Result<CommitOutcome> {
+        if self.inner.is_bare() {
+            return Err(CoreError::BareRepository);
+        }
+        let status = self.status()?;
+        if !status.conflicted.is_empty() {
+            return Err(CoreError::ConflictsPresent {
+                paths: status.conflicted,
+            });
+        }
+        if status.staged.is_empty() {
+            return Err(CoreError::NothingStaged);
+        }
+
+        // `is_bare()` above already guarantees this, but the compiler cannot
+        // know that — `ok_or` keeps the branch reachable and correct without
+        // an `unwrap`.
+        let workdir = self
+            .inner
+            .workdir()
+            .ok_or(CoreError::BareRepository)?
+            .to_path_buf();
+
+        // Checked ourselves, never inferred from a libgit2 error code — the
+        // exact `git2::Error` ​for a locked index is itself unverified
+        // (measurements.md, "Still unverified"), and this design does not
+        // need to know it (design.md §5.4).
+        let lock_path = self.inner.path().join("index.lock");
+        if lock_path.exists() {
+            return Err(CoreError::IndexLocked {
+                lock_path: lock_path.display().to_string(),
+            });
+        }
+
+        let resolved = git_binary::resolve(request.git_override.as_deref())?;
+        git_binary::identity(&resolved.path, &workdir)?;
+
+        let head_before = fresh_head(&workdir)?;
+        let timeout = request
+            .timeout
+            .unwrap_or_else(git_binary::default_commit_timeout);
+        let attempt = git_binary::run_commit(&resolved.path, &workdir, &request.message, timeout)?;
+        let head_after = fresh_head(&workdir)?;
+
+        outcome_from(head_before, head_after, attempt, timeout)
+    }
+}
+
+/// `HEAD`, through a **freshly opened** `Repository` — never the cached one
+/// (design.md §2.4). `None` on an unborn branch. Detached `HEAD` resolves to
+/// an `Oid` the same way a branch does, so it needs no special handling.
+fn fresh_head(workdir: &Path) -> Result<Option<git2::Oid>> {
+    let repo = Repository::discover(workdir)?;
+    let oid = match repo.head() {
+        Ok(reference) => reference.target(),
+        Err(_) => None,
+    };
+    Ok(oid)
+}
+
+/// The exit → outcome mapping (design.md §2.5's 7-row table). No branch here
+/// inspects `stdout`/`stderr` text to classify anything — only `exit_code`
+/// and whether `HEAD` moved decide the shape; the text is carried through
+/// verbatim for the UI to display, never parsed.
+fn outcome_from(
+    head_before: Option<git2::Oid>,
+    head_after: Option<git2::Oid>,
+    attempt: git_binary::CommitAttempt,
+    timeout: std::time::Duration,
+) -> Result<CommitOutcome> {
+    let moved = head_before != head_after;
+    match (attempt.exit_code, moved) {
+        (Some(0), true) => Ok(success(head_after, None)),
+        (Some(0), false) => Err(CoreError::CommitFailed {
+            exit_code: Some(0),
+            stderr: attempt.stderr,
+            stdout: attempt.stdout,
+        }),
+        (Some(code), false) => Err(CoreError::CommitFailed {
+            exit_code: Some(code),
+            stderr: attempt.stderr,
+            stdout: attempt.stdout,
+        }),
+        (Some(code), true) => Ok(success(
+            head_after,
+            Some(CommitWarning::NonZeroExitButHeadMoved {
+                exit_code: code,
+                stderr: attempt.stderr,
+            }),
+        )),
+        (None, true) => Ok(success(
+            head_after,
+            Some(CommitWarning::TimedOutButHeadMoved {
+                stderr: attempt.stderr,
+            }),
+        )),
+        (None, false) => Err(CoreError::CommitTimedOut {
+            seconds: timeout.as_secs(),
+            stderr: attempt.stderr,
+        }),
+    }
+}
+
+/// `moved == true` in every caller of this function guarantees `head_after`
+/// is `Some` — `None → None` is not a move. `expect` documents that
+/// invariant instead of threading an unreachable `Result` branch through.
+fn success(head_after: Option<git2::Oid>, warning: Option<CommitWarning>) -> CommitOutcome {
+    let id = head_after.expect("caller only reaches `success` when HEAD moved");
+    let id = id.to_string();
+    CommitOutcome {
+        short_id: short(&id).to_string(),
+        id,
+        warning,
     }
 }
 

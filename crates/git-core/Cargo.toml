@@ -9,8 +9,16 @@ license.workspace = true
 git2.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+which = "8.0.5"
 
 [dev-dependencies]
 # Throwaway repositories for write-path tests only (index_freshness,
 # stage/unstage). Not a runtime dependency of the domain crate.
 tempfile = "3"
+
+[target."cfg(unix)".dependencies]
+# Unix-only: sends the SIGTERM that M3 actually measured, and SIGKILL after
+# the grace period, to the commit child's own process group. `Child::kill()`
+# (std) only sends SIGKILL and cannot reproduce M3's measured signal
+# (design.md §3.3).
+libc = "0.2"
