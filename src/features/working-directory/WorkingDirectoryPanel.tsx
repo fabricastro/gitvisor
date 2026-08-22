@@ -6,6 +6,10 @@ import { RefusalNotice } from "./RefusalNotice";
  * Container. Reads `status`/`staging` from the store; owns no markup
  * decisions (design.md §11). Committing is a later change (2026-08-20
  * delivery split) — this panel only stages and unstages.
+ *
+ * Rendered inside the sidebar rather than as its own column. As a fourth
+ * column it left roughly 530px for the history pane at 1440px, truncating
+ * commit messages mid-word (finding F3).
  */
 export function WorkingDirectoryPanel() {
   const status = useRepo((state) => state.status);
@@ -17,9 +21,9 @@ export function WorkingDirectoryPanel() {
   const unstaged = status?.unstaged ?? [];
 
   return (
-    <aside
+    <section
       aria-label="Working directory"
-      className="scroll-thin flex w-72 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface"
+      className="flex shrink-0 flex-col border-b border-border"
     >
       <div className="border-b border-border px-2.5 py-2">
         <h2 className="text-[11px] font-medium tracking-wide text-faint uppercase">
@@ -58,6 +62,6 @@ export function WorkingDirectoryPanel() {
           </p>
         </div>
       )}
-    </aside>
+    </section>
   );
 }

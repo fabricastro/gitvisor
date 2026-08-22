@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 
 import { useRepo } from "@/features/repo/store";
+import { WorkingDirectoryPanel } from "@/features/working-directory/WorkingDirectoryPanel";
 import { BranchIcon, ChevronIcon, CloudIcon, TagIcon } from "@/shared/ui/Icon";
 import type { RefEntry } from "@/shared/types";
 
 /** Branches, remotes and tags, grouped the way people actually think of them. */
 export function Sidebar() {
   const refs = useRepo((state) => state.refs);
-  const status = useRepo((state) => state.status);
   const select = useRepo((state) => state.select);
 
   const groups = useMemo(() => {
@@ -24,26 +24,12 @@ export function Sidebar() {
     return { local, tags, remotes };
   }, [refs]);
 
-  const pending =
-    (status?.staged.length ?? 0) +
-    (status?.unstaged.length ?? 0) +
-    (status?.conflicted.length ?? 0);
 
   return (
-    <nav className="scroll-thin flex w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface py-2">
-      {pending > 0 && (
-        <div className="mx-2 mb-2 rounded border border-border-strong bg-elevated px-2.5 py-2">
-          <p className="text-[11px] font-medium tracking-wide text-faint uppercase">
-            Working directory
-          </p>
-          <p className="mt-1 text-muted">
-            {status?.staged.length ?? 0} staged · {status?.unstaged.length ?? 0} unstaged
-            {(status?.conflicted.length ?? 0) > 0 && (
-              <span className="text-removed"> · {status?.conflicted.length} conflicted</span>
-            )}
-          </p>
-        </div>
-      )}
+    <aside className="scroll-thin flex w-72 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface">
+      <WorkingDirectoryPanel />
+
+      <nav aria-label="Refs" className="py-2">
 
       <Section title="Branches" count={groups.local.length} defaultOpen>
         {groups.local.map((ref) => (
@@ -78,7 +64,8 @@ export function Sidebar() {
           ))}
         </Section>
       )}
-    </nav>
+      </nav>
+    </aside>
   );
 }
 

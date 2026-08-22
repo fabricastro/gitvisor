@@ -7,7 +7,6 @@ import { startupPath } from "@/features/repo/api";
 import { rememberedRepo, useRepo } from "@/features/repo/store";
 import { WelcomeScreen } from "@/features/repo/WelcomeScreen";
 import { Sidebar } from "@/features/sidebar/Sidebar";
-import { WorkingDirectoryPanel } from "@/features/working-directory/WorkingDirectoryPanel";
 import { BranchIcon, FolderIcon, RefreshIcon } from "@/shared/ui/Icon";
 
 /** macOS draws its traffic lights over the content, so the bar needs room. */
@@ -110,7 +109,6 @@ export function App() {
       {info ? (
         <main className="flex min-h-0 flex-1">
           <Sidebar />
-          <WorkingDirectoryPanel />
           <CommitGraph />
           <CommitDetailPanel />
         </main>

@@ -12,7 +12,7 @@ Closed items stay listed, with what closed them.
 | F2 | **Closed** by `fix-graph-viewport` | The relative-time column could wrap inside a fixed-height row, colliding neighbouring rows. Now structurally unable to wrap. |
 | H1 | **Decided** — `stage-and-commit` design D8 | `withGlobalTauri` is off. The WebdriverIO service's window-state and log-forwarding features need it; nothing currently specified does. Enabling it would have to be scoped as tightly as the WebDriver plugin itself. |
 | H2 | **OPEN** | Fixture determinism covers commit OIDs, **not rendered output**. `tools/git-fixtures` pins `EPOCH = 1_700_000_000`, so OIDs are byte-identical everywhere — but the UI renders *relative* dates, so the same fixture shows "2 years ago" today and "3 years ago" next year. **Never assert on rendered date text, and pixel baselines cannot work.** Options if it ever needs closing: inject a fixed clock for E2E, render absolute dates behind a test flag, or keep relative time and never assert on it (what happens today, by accident rather than decision). |
-| F3 | **OPEN** | The changes panel squeezes the commit-message column until it is unreadable. At 1440 logical px — an ordinary laptop — messages truncate to `merge refactor/par…` and the SHA column clips at the panel edge. Every test passes: the five browser specs are green, the graph renders correctly, the staging behaviour is right. The app is simply worse to use. Found by looking at a screenshot, which is the only thing that can find it. Fixing it is a product call — collapsible panel, narrower default, an overlay, or a different layout — not a bug with one correct answer. |
+| F3 | **Closed** 2026-08-22 | The changes panel squeezes the commit-message column until it is unreadable. At 1440 logical px — an ordinary laptop — messages truncate to `merge refactor/par…` and the SHA column clips at the panel edge. Every test passes: the five browser specs are green, the graph renders correctly, the staging behaviour is right. The app is simply worse to use. Found by looking at a screenshot, which is the only thing that can find it. Fixed by moving the panel into the sidebar instead of giving it a fourth column: the sidebar already carried the working-directory summary, so the file list belongs there. Sidebar widened 240→288px and the standalone 288px column dropped, returning ~240px to the history pane. The sidebar also stopped being a `<nav>` wrapping non-navigation content. |
 | M-series | Reference | Measured facts underpinning `stage-and-commit`: libgit2 runs no hooks; ignores `commit.gpgsign` (M1); returns a stale index after an external `git add`, and writing it back destroys that work (M2); a SIGTERM'd signing commit is a safe no-op (M3); path escapes are refused but only as `GenericError` (M4); `Repository::signature()` reads config only, so a pre-flight built on it falsely refuses environment identities (M5). Full evidence in `openspec/changes/stage-and-commit/measurements.md`. |
 
 ## Why M5 has its own note
@@ -25,3 +25,16 @@ doubt that would have caught the error.
 **"Verified" means someone ran it and can show the output.** Everything else is
 "reasoned", and reasoned things belong in an unverified register with the cost
 of finding out written next to them.
+
+## A note on F3's category
+
+F3 was not a missing test. There is no assertion for *"this column is too narrow
+to read"* — the behaviour was correct, the five browser specs were green, the
+graph rendered perfectly, and the app was worse to use than an hour earlier.
+
+It is the exact mirror of F1: that one was broken behaviour with every gate
+green; this one was correct behaviour with the experience broken. Both were
+invisible to the same battery of checks and obvious in a single screenshot.
+
+Some defects do not live in the space that tests cover. The harness exists to
+put a picture in front of someone, and that is a different job from asserting.
